@@ -37,24 +37,27 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStructOrNull;
 
-public abstract class TimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     public static final String OVERVIEW_DOC =
             "Convert timestamps between different formats such as Unix epoch, strings, and Connect Date/Timestamp types."
                     + "Applies to individual fields or to the entire value."
-                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + TimestampConverter.Key.class.getName() + "</code>) "
-                    + "or value (<code>" + TimestampConverter.Value.class.getName() + "</code>).";
+                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + KyoboTimestampConverter.Key.class.getName() + "</code>) "
+                    + "or value (<code>" + KyoboTimestampConverter.Value.class.getName() + "</code>).";
 
+//    private SimpleConfig config;
     public static final String FIELD_CONFIG = "field";
     private static final String FIELD_DEFAULT = "";
 
@@ -63,8 +66,14 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     public static final String FORMAT_CONFIG = "format";
     private static final String FORMAT_DEFAULT = "";
 
-    public static final String UNIX_PRECISION_CONFIG = "unix.precision";
-    private static final String UNIX_PRECISION_DEFAULT = "milliseconds";
+    public static final ConfigDef CONFIG_DEF = new ConfigDef()
+            .define(FIELD_CONFIG, ConfigDef.Type.LIST, FIELD_DEFAULT, ConfigDef.Importance.HIGH,
+                    "The field containing the timestamp, or empty if the entire value is a timestamp")
+            .define(TARGET_TYPE_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH,
+                    "The desired timestamp representation: string, unix, Date, Time, or Timestamp")
+            .define(FORMAT_CONFIG, ConfigDef.Type.STRING, FORMAT_DEFAULT, ConfigDef.Importance.MEDIUM,
+                    "A SimpleDateFormat-compatible format for the timestamp. Used to generate the output when type=string "
+                            + "or used to parse the input if the input is a string.");
 
     private static final String PURPOSE = "converting timestamp formats";
 
@@ -73,36 +82,13 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     private static final String TYPE_DATE = "Date";
     private static final String TYPE_TIME = "Time";
     private static final String TYPE_TIMESTAMP = "Timestamp";
-
-    private static final String UNIX_PRECISION_MILLIS = "milliseconds";
-    private static final String UNIX_PRECISION_MICROS = "microseconds";
-    private static final String UNIX_PRECISION_NANOS = "nanoseconds";
-    private static final String UNIX_PRECISION_SECONDS = "seconds";
+    private static final Set<String> VALID_TYPES = new HashSet<>(Arrays.asList(TYPE_STRING, TYPE_UNIX, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP));
 
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
 
     public static final Schema OPTIONAL_DATE_SCHEMA = org.apache.kafka.connect.data.Date.builder().optional().schema();
     public static final Schema OPTIONAL_TIMESTAMP_SCHEMA = Timestamp.builder().optional().schema();
     public static final Schema OPTIONAL_TIME_SCHEMA = Time.builder().optional().schema();
-
-    public static final ConfigDef CONFIG_DEF = new ConfigDef()
-            .define(FIELD_CONFIG, ConfigDef.Type.STRING, FIELD_DEFAULT, ConfigDef.Importance.HIGH,
-                    "The field containing the timestamp, or empty if the entire value is a timestamp")
-            .define(TARGET_TYPE_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
-                    ConfigDef.ValidString.in(TYPE_STRING, TYPE_UNIX, TYPE_DATE, TYPE_TIME, TYPE_TIMESTAMP),
-                    ConfigDef.Importance.HIGH,
-                    "The desired timestamp representation: string, unix, Date, Time, or Timestamp")
-            .define(FORMAT_CONFIG, ConfigDef.Type.STRING, FORMAT_DEFAULT, ConfigDef.Importance.MEDIUM,
-                    "A SimpleDateFormat-compatible format for the timestamp. Used to generate the output when type=string "
-                            + "or used to parse the input if the input is a string.")
-            .define(UNIX_PRECISION_CONFIG, ConfigDef.Type.STRING, UNIX_PRECISION_DEFAULT,
-                    ConfigDef.ValidString.in(
-                            UNIX_PRECISION_NANOS, UNIX_PRECISION_MICROS,
-                            UNIX_PRECISION_MILLIS, UNIX_PRECISION_SECONDS),
-                    ConfigDef.Importance.LOW,
-                    "The desired Unix precision for the timestamp: seconds, milliseconds, microseconds, or nanoseconds. " +
-                            "Used to generate the output when type=unix or used to parse the input if the input is a Long." +
-                            "Note: This SMT will cause precision loss during conversions from, and to, values with sub-millisecond components.");
 
     private interface TimestampTranslator {
         /**
@@ -126,25 +112,24 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         TRANSLATORS.put(TYPE_STRING, new TimestampTranslator() {
             @Override
             public Date toRaw(Config config, Object orig) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_STRING : toRaw :"+orig.toString());
                 if (!(orig instanceof String))
                     throw new DataException("Expected string timestamp to be a String, but found " + orig.getClass());
                 try {
                     return config.format.parse((String) orig);
+
                 } catch (ParseException e) {
                     throw new DataException("Could not parse timestamp: value (" + orig + ") does not match pattern ("
                             + config.format.toPattern() + ")", e);
                 }
             }
+
             @Override
             public Schema typeSchema(boolean isOptional) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_STRING : typeSchema :"+isOptional);
                 return isOptional ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA;
             }
 
             @Override
             public String toType(Config config, Date orig) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_STRING : toType :"+orig.toString());
                 synchronized (config.format) {
                     return config.format.format(orig);
                 }
@@ -154,51 +139,25 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         TRANSLATORS.put(TYPE_UNIX, new TimestampTranslator() {
             @Override
             public Date toRaw(Config config, Object orig) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_UNIX : toRaw :"+orig.toString());
                 if (!(orig instanceof Long))
                     throw new DataException("Expected Unix timestamp to be a Long, but found " + orig.getClass());
-                Long unixTime = (Long) orig;
-                switch (config.unixPrecision) {
-                    case UNIX_PRECISION_SECONDS:
-                        return Timestamp.toLogical(Timestamp.SCHEMA, TimeUnit.SECONDS.toMillis(unixTime));
-                    case UNIX_PRECISION_MICROS:
-                        return Timestamp.toLogical(Timestamp.SCHEMA, TimeUnit.MICROSECONDS.toMillis(unixTime));
-                    case UNIX_PRECISION_NANOS:
-                        return Timestamp.toLogical(Timestamp.SCHEMA, TimeUnit.NANOSECONDS.toMillis(unixTime));
-                    case UNIX_PRECISION_MILLIS:
-                    default:
-                        return Timestamp.toLogical(Timestamp.SCHEMA, unixTime);
-                }
+                return Timestamp.toLogical(Timestamp.SCHEMA, (Long) orig);
             }
 
             @Override
             public Schema typeSchema(boolean isOptional) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_UNIX : typeSchema :"+isOptional);
                 return isOptional ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
             }
 
             @Override
             public Long toType(Config config, Date orig) {
-                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_UNIX : toType :"+orig.toString());
-                Long unixTimeMillis = Timestamp.fromLogical(Timestamp.SCHEMA, orig);
-                switch (config.unixPrecision) {
-                    case UNIX_PRECISION_SECONDS:
-                        return TimeUnit.MILLISECONDS.toSeconds(unixTimeMillis);
-                    case UNIX_PRECISION_MICROS:
-                        return TimeUnit.MILLISECONDS.toMicros(unixTimeMillis);
-                    case UNIX_PRECISION_NANOS:
-                        return TimeUnit.MILLISECONDS.toNanos(unixTimeMillis);
-                    case UNIX_PRECISION_MILLIS:
-                    default:
-                        return unixTimeMillis;
-                }
+                return Timestamp.fromLogical(Timestamp.SCHEMA, orig);
             }
         });
 
         TRANSLATORS.put(TYPE_DATE, new TimestampTranslator() {
             @Override
             public Date toRaw(Config config, Object orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_DATE : toRaw :"+orig.toString());
                 if (!(orig instanceof Date))
                     throw new DataException("Expected Date to be a java.util.Date, but found " + orig.getClass());
                 // Already represented as a java.util.Date and Connect Dates are a subset of valid java.util.Date values
@@ -207,13 +166,11 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
             @Override
             public Schema typeSchema(boolean isOptional) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_DATE : typeSchema :"+isOptional);
                 return isOptional ? OPTIONAL_DATE_SCHEMA : org.apache.kafka.connect.data.Date.SCHEMA;
             }
 
             @Override
             public Date toType(Config config, Date orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_DATE : toType :"+orig.toString());
                 Calendar result = Calendar.getInstance(UTC);
                 result.setTime(orig);
                 result.set(Calendar.HOUR_OF_DAY, 0);
@@ -227,7 +184,6 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         TRANSLATORS.put(TYPE_TIME, new TimestampTranslator() {
             @Override
             public Date toRaw(Config config, Object orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIME : toRaw :"+orig.toString());
                 if (!(orig instanceof Date))
                     throw new DataException("Expected Time to be a java.util.Date, but found " + orig.getClass());
                 // Already represented as a java.util.Date and Connect Times are a subset of valid java.util.Date values
@@ -236,13 +192,11 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
             @Override
             public Schema typeSchema(boolean isOptional) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIME : typeSchema :"+isOptional);
                 return isOptional ? OPTIONAL_TIME_SCHEMA : Time.SCHEMA;
             }
 
             @Override
             public Date toType(Config config, Date orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIME : toType :"+orig.toString());
                 Calendar origCalendar = Calendar.getInstance(UTC);
                 origCalendar.setTime(orig);
                 Calendar result = Calendar.getInstance(UTC);
@@ -258,7 +212,6 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         TRANSLATORS.put(TYPE_TIMESTAMP, new TimestampTranslator() {
             @Override
             public Date toRaw(Config config, Object orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIMESTAMP : toType :"+orig.toString());
                 if (!(orig instanceof Date))
                     throw new DataException("Expected Timestamp to be a java.util.Date, but found " + orig.getClass());
                 return (Date) orig;
@@ -266,13 +219,11 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
             @Override
             public Schema typeSchema(boolean isOptional) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIMESTAMP : typeSchema :"+isOptional);
                 return isOptional ? OPTIONAL_TIMESTAMP_SCHEMA : Timestamp.SCHEMA;
             }
 
             @Override
             public Date toType(Config config, Date orig) {
-//                System.out.println(":TIMEGATE: TRANSLATORS method : TYPE_TIMESTAMP : toType :"+orig.toString());
                 return orig;
             }
         });
@@ -281,50 +232,66 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     // This is a bit unusual, but allows the transformation config to be passed to static anonymous classes to customize
     // their behavior
     private static class Config {
-        Config(String field, String type, SimpleDateFormat format, String unixPrecision) {
-            this.field = field;
-            this.type = type;
+        Config(SimpleDateFormat format) {
+
             this.format = format;
-            this.unixPrecision = unixPrecision;
         }
-        String field;
-        String type;
         SimpleDateFormat format;
-        String unixPrecision;
     }
     private Config config;
+    private SimpleConfig simpleConfig;
+
+    private Set<String> fields;
+    private String type;
+    private String formatPattern;
+    private SimpleDateFormat format;
     private Cache<Schema, Schema> schemaUpdateCache;
 
 
+    /**
+     * Checks if a string is null, empty or whitespace only.
+     * @param str a string to be checked
+     * @return true if the string is null, empty or whitespace only; otherwise, return false.
+     */
+    public static boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
     @Override
-    public void configure(Map<String, ?> configs) {
-//        System.out.println(":TIMEGATE:===================start configure====================");
-        final SimpleConfig simpleConfig = new SimpleConfig(CONFIG_DEF, configs);
-        final String field = simpleConfig.getString(FIELD_CONFIG);
-        final String type = simpleConfig.getString(TARGET_TYPE_CONFIG);
-        String formatPattern = simpleConfig.getString(FORMAT_CONFIG);
-        final String unixPrecision = simpleConfig.getString(UNIX_PRECISION_CONFIG);
+    public void configure(Map<String, ?> props) {
+        this.simpleConfig = new SimpleConfig(CONFIG_DEF, props);
+        fields = new HashSet<>(simpleConfig.getList(FIELD_CONFIG));
+//        for (String field : fields) {
+//            System.out.println(":TIMEGATE: configure method field size :"+fields.size());
+//            System.out.println(":TIMEGATE: configure method filed :"+field);
+//            System.out.println(":TIMEGATE: configure method =============================== :");
+//        }
+
+        type = simpleConfig.getString(TARGET_TYPE_CONFIG);
+        formatPattern = simpleConfig.getString(FORMAT_CONFIG);
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
 
-        if (type.equals(TYPE_STRING) && Utils.isBlank(formatPattern)) {
-            throw new ConfigException("TimestampConverter requires format option to be specified when using string timestamps");
+        if (!VALID_TYPES.contains(type)) {
+            throw new ConfigException("Unknown timestamp type in KyoboTimestampConverter: " + type + ". Valid values are "
+                    + Utils.join(VALID_TYPES, ", ") + ".");
         }
-        SimpleDateFormat format = null;
-        if (!Utils.isBlank(formatPattern)) {
+        if (type.equals(TYPE_STRING) && isBlank(formatPattern)) {
+            throw new ConfigException("KyoboTimestampConverter requires format option to be specified when using string timestamps");
+        }
+//        SimpleDateFormat format = null;
+        if (!isBlank(formatPattern)) {
             try {
                 format = new SimpleDateFormat(formatPattern);
                 format.setTimeZone(UTC);
             } catch (IllegalArgumentException e) {
-                throw new ConfigException("TimestampConverter requires a SimpleDateFormat-compatible pattern for string timestamps: "
+                throw new ConfigException("KyoboTimestampConverter requires a SimpleDateFormat-compatible pattern for string timestamps: "
                         + formatPattern, e);
             }
         }
-        config = new Config(field, type, format, unixPrecision);
+        config = new Config(format);
     }
 
     @Override
     public R apply(R record) {
-//        System.out.println(":TIMEGATE: apply method : TYPE_TIMESTAMP:"+record.toString());
         if (operatingSchema(record) == null) {
             return applySchemaless(record);
         } else {
@@ -341,7 +308,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
     public void close() {
     }
 
-    public static class Key<R extends ConnectRecord<R>> extends TimestampConverter<R> {
+    public static class Key<R extends ConnectRecord<R>> extends KyoboTimestampConverter<R> {
         @Override
         protected Schema operatingSchema(R record) {
             return record.keySchema();
@@ -358,7 +325,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         }
     }
 
-    public static class Value<R extends ConnectRecord<R>> extends TimestampConverter<R> {
+    public static class Value<R extends ConnectRecord<R>> extends KyoboTimestampConverter<R> {
         @Override
         protected Schema operatingSchema(R record) {
             return record.valueSchema();
@@ -383,16 +350,10 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
     private R applyWithSchema(R record) {
         final Schema schema = operatingSchema(record);
-//        System.out.println(":TIMEGATE: applyWithSchema method : schema :"+schema);
-        if (config.field.isEmpty()) {
+        if (fields.isEmpty()) {
             Object value = operatingValue(record);
-//            System.out.println(":TIMEGATE: applyWithSchema method : field is null :"+value);
             // New schema is determined by the requested target timestamp type
-            Schema updatedSchema = TRANSLATORS.get(config.type).typeSchema(schema.isOptional());
-//            System.out.println(":TIMEGATE: applyWithSchema method : config.type :"+config.type);
-//            System.out.println(":TIMEGATE: applyWithSchema method : schema.isOptional() :"+schema.isOptional());
-//            System.out.println(":TIMEGATE: applyWithSchema method : updatedSchema :"+updatedSchema);
-//            return newRecord(record, updatedSchema, convertTimestamp(value, timestampTypeFromSchema(schema)));
+            Schema updatedSchema = TRANSLATORS.get(type).typeSchema(schema.isOptional());
             return newRecord(record, updatedSchema, convertTimestamp(value, timestampTypeFromSchema(schema)));
         } else {
             final Struct value = requireStructOrNull(operatingValue(record), PURPOSE);
@@ -400,8 +361,8 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
             if (updatedSchema == null) {
                 SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
                 for (Field field : schema.fields()) {
-                    if (field.name().equals(config.field)) {
-                        builder.field(field.name(), TRANSLATORS.get(config.type).typeSchema(field.schema().isOptional()));
+                    if (fields.contains(field.name())) {
+                        builder.field(field.name(), TRANSLATORS.get(type).typeSchema(field.schema().isOptional()));
                     } else {
                         builder.field(field.name(), field.schema());
                     }
@@ -418,7 +379,6 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
             }
 
             Struct updatedValue = applyValueWithSchema(value, updatedSchema);
-            System.out.println(":TIMEGATE: applyWithSchema method : updatedValue :"+updatedValue.toString());
             return newRecord(record, updatedSchema, updatedValue);
         }
     }
@@ -430,9 +390,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         Struct updatedValue = new Struct(updatedSchema);
         for (Field field : value.schema().fields()) {
             final Object updatedFieldValue;
-            if (field.name().equals(config.field)) {
-//                updatedFieldValue = convertTimestamp(value.get(field), timestampTypeFromSchema(field.schema()));
-//                System.out.println(":TIMEGATE: applyValueWithSchema method : value.get(field) :"+value.get(field).toString());
+            if (fields.contains(field.name())) {
                 updatedFieldValue = convertTimestamp(value.get(field), timestampTypeFromSchema(field.schema()));
             } else {
                 updatedFieldValue = value.get(field);
@@ -444,12 +402,15 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
 
     private R applySchemaless(R record) {
         Object rawValue = operatingValue(record);
-        if (rawValue == null || config.field.isEmpty()) {
+        if (rawValue == null || fields.isEmpty()) {
             return newRecord(record, null, convertTimestamp(rawValue));
         } else {
             final Map<String, Object> value = requireMap(rawValue, PURPOSE);
             final HashMap<String, Object> updatedValue = new HashMap<>(value);
-            updatedValue.put(config.field, convertTimestamp(value.get(config.field)));
+            for (String field : fields) {
+                updatedValue.put(field, convertTimestamp(value.get(field)));
+            }
+
             return newRecord(record, null, updatedValue);
         }
     }
@@ -487,7 +448,7 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         } else if (timestamp instanceof String) {
             return TYPE_STRING;
         }
-        throw new DataException("TimestampConverter does not support " + timestamp.getClass() + " objects as timestamps");
+        throw new DataException("KyoboTimestampConverter does not support " + timestamp.getClass() + " objects as timestamps");
     }
 
     /**
@@ -508,11 +469,16 @@ public abstract class TimestampConverter<R extends ConnectRecord<R>> implements 
         if (sourceTranslator == null) {
             throw new ConnectException("Unsupported timestamp type: " + timestampFormat);
         }
-        Date rawTimestamp = sourceTranslator.toRaw(config, timestamp);
+        String strTime = timestamp.toString();
+        String unixMills = strTime.substring(0, strTime.length()-3);
+//        소스 UTC -> Topic GMT변환됨 -> 싱크 GMT-9시간
+        long GMTTransUtc = Long.parseLong(unixMills) - 32400000L;
 
-        TimestampTranslator targetTranslator = TRANSLATORS.get(config.type);
+        Date rawTimestamp = sourceTranslator.toRaw(config, GMTTransUtc);
+
+        TimestampTranslator targetTranslator = TRANSLATORS.get(type);
         if (targetTranslator == null) {
-            throw new ConnectException("Unsupported timestamp type: " + config.type);
+            throw new ConnectException("Unsupported timestamp type: " + type);
         }
         return targetTranslator.toType(config, rawTimestamp);
     }
