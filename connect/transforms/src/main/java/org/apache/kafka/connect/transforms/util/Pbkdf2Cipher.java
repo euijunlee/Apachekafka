@@ -5,14 +5,12 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.InvalidParameterSpecException;
 import java.util.Base64;
 import java.util.Random;
 
-public class AesPbkdf2Cipher {
+public class Pbkdf2Cipher {
     private static final String MESSAGE_DIGEST = "SHA-256";
     private static final String AL_MO_BL_PAD = "AES/CBC/PKCS5Padding";
     private static final String PBKDF2WITH_MO_SHA1 = "PBKDF2WithHmacSHA1";
@@ -22,10 +20,30 @@ public class AesPbkdf2Cipher {
     private static SecretKeySpec secretKeySpec;
 
     public static void setIvSpec(IvParameterSpec ivSpec) {
-        AesPbkdf2Cipher.ivSpec = ivSpec;
+        Pbkdf2Cipher.ivSpec = ivSpec;
     }
     public static void setSecretKeySpec(SecretKeySpec keySpec) {
-        AesPbkdf2Cipher.secretKeySpec = keySpec;
+        Pbkdf2Cipher.secretKeySpec = keySpec;
+    }
+
+    public static String transformType(Object value, String cipherType, int saltByte, int repeat) throws Exception {
+//        현재는 데이터 마다 spec 및 key 생성
+
+        switch (cipherType) {
+            case "SHA-256":
+                return getSHA256Value(value, repeat);
+//                break;
+            case "AES-256":
+                String keyStr = randomStrGen(32);
+                String ivStr = keyStr.substring(0, 16);
+                createKeySpec(keyStr, repeat);
+                createIVSpec(ivStr, repeat);
+                return getEncryptValue(value.toString());
+//                break;
+            default:
+                return getSHA256Value(value, repeat);
+        }
+
     }
 
     /**
@@ -33,7 +51,7 @@ public class AesPbkdf2Cipher {
      * @param data
      * @return
      */
-    private static String byteToHexString(byte[] data) {
+    private String byteToHexString(byte[] data) {
         StringBuilder sb = new StringBuilder();
         for(byte b : data) {
             sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
@@ -82,13 +100,13 @@ public class AesPbkdf2Cipher {
      * @throws NoSuchAlgorithmException     알고리즘 오류
      * @throws InvalidKeySpecException      키스펙 오류
      */
-    public static void createKeySpec(String baseKey) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeySpecException {
+    public static void createKeySpec(String baseKey, int repeat) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeySpecException {
 
-        byte[] saltedBytes = mdSHA256(baseKey);
+        byte[] saltedBytes = getSHA256ForAES(baseKey);
         SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2WITH_MO_SHA1);
         // 256bit (AES256은 256bit(32byte)의 키, 128bit(16byte)의 블록사이즈를 가짐.)
         // Password-Based Encryption방식으로 keyspec 생성시 Key Stratching용 반복해쉬작업수 10000, 암호키 크기 256
-        PBEKeySpec pbeKeySpec = new PBEKeySpec(baseKey.toCharArray(), saltedBytes, 10000, 256);
+        PBEKeySpec pbeKeySpec = new PBEKeySpec(baseKey.toCharArray(), saltedBytes, repeat, 256);
         Key secretKey = factory.generateSecret(pbeKeySpec);
 
         byte[] key = new byte[32];
@@ -106,13 +124,13 @@ public class AesPbkdf2Cipher {
      * @throws InvalidKeySpecException      키스펙 오류
      * @
      */
-    public static void createIVSpec(String IV) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeySpecException {
+    public static void createIVSpec(String IV, int repeat) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeySpecException {
 
-        byte[] saltedBytes = mdSHA256(IV);
+        byte[] saltedBytes = getSHA256ForAES(IV);
 
         SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2WITH_MO_SHA1);
         // 128bit(16byte) 스펙 생성
-        PBEKeySpec pbeKeySpec = new PBEKeySpec(IV.toCharArray(), saltedBytes, 10000, 128);
+        PBEKeySpec pbeKeySpec = new PBEKeySpec(IV.toCharArray(), saltedBytes, repeat, 128);
         Key secretIV = factory.generateSecret(pbeKeySpec);
 
         byte[] iv = new byte[16];
@@ -126,7 +144,7 @@ public class AesPbkdf2Cipher {
      * @param msg
      * @throws Exception
      */
-    public String encrypt(String msg) throws Exception {
+    public static String getEncryptValue(String msg) throws Exception {
         Cipher c = Cipher.getInstance(AL_MO_BL_PAD);
         c.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
 
@@ -142,7 +160,7 @@ public class AesPbkdf2Cipher {
      * @param encodedMsg
      * @throws Exception
      */
-    public String decrypt(String encodedMsg) throws Exception {
+    public static String getDecryptValue(String encodedMsg) throws Exception {
         Cipher c = Cipher.getInstance(AL_MO_BL_PAD);
         c.init(Cipher.DECRYPT_MODE, secretKeySpec, ivSpec);
         byte[] decodeByte = Base64.getDecoder().decode(encodedMsg);
@@ -154,15 +172,35 @@ public class AesPbkdf2Cipher {
     /**
      * KeySpec, IVSpec을 만들기 위한 SHA-256으로 해시를 통해 salting함
      * 16진수로 64byte 생성
-     * @param txt
+     * @param strValue
      * @return
      */
-    public static byte[] mdSHA256(String txt) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public static byte[] getSHA256ForAES(String strValue) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         MessageDigest md = MessageDigest.getInstance(MESSAGE_DIGEST);
-        byte[] txtBytes = txt.getBytes("UTF-8");
-//        byte[] saltedBytes = md.digest(txtBytes);
-//        md.update(txt.getBytes());
+        byte[] txtBytes = strValue.getBytes("UTF-8");
+
         return md.digest(txtBytes);
     }
+
+    /**
+     * SHA-256의 보완 작업
+     * 원문+Salt -> 새로운 Byte 생성
+     * Digest+Salt * 복수(Key-Stretching) -> 새로운 Digest 생성
+     * 16진수로 64byte 생성
+     * @param value
+     * @return
+     */
+    public static String getSHA256Value(Object value, int repeat) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest md = MessageDigest.getInstance(MESSAGE_DIGEST);
+        byte[] valueBytes = value.toString().getBytes();
+        for(int i = 0; i < repeat; i++) {
+            String temp = value + byteToString(saltBytes(16));
+            md.update(temp.getBytes());
+            valueBytes = md.digest();
+        }
+        return byteToString(valueBytes);
+    }
+
+
 
 }

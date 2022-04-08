@@ -25,6 +25,7 @@ import org.apache.kafka.connect.data.Values;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.util.MessageDigestTransform;
 import org.apache.kafka.connect.transforms.util.NonEmptyListValidator;
+import org.apache.kafka.connect.transforms.util.Pbkdf2Cipher;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 import java.math.BigDecimal;
@@ -60,18 +61,28 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
     private SimpleConfig config;
     private static final String COLUMN_FIELD_CONFIG = "column.field";
     private static final String COLUMN_FIELD_DEFAULT = "";
+
     private static final String CIPHER_TYPE_CONFIG = "cipher.type";
 //    private static final String CIPHER_TYPE_DEFAULT = "SHA-256";
-
     private static final String TYPE_SHA256 = "SHA-256";
     private static final String TYPE_AES256 = "AES-256";
+
+    private static final String SALT_LEN_CONFIG = "salt.byte";
+    private static final int SALT_LEN_DEFALUT = 16;
+
+    private static final String KEY_STRETCHING_CONFIG = "key.stretching.repeat";
+    private static final int KEY_STRETCHING_DEFALUT = 100;
 
 
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(COLUMN_FIELD_CONFIG, ConfigDef.Type.LIST, ConfigDef.NO_DEFAULT_VALUE, new NonEmptyListValidator(),
                     ConfigDef.Importance.HIGH, "DB column including the field name described is subject to encryption.")
             .define(CIPHER_TYPE_CONFIG, ConfigDef.Type.STRING, TYPE_SHA256,ConfigDef.ValidString.in(TYPE_SHA256, TYPE_AES256),
-                    ConfigDef.Importance.HIGH, "The desired cipher type: SHA-256, AES-256");
+                    ConfigDef.Importance.HIGH, "The desired cipher type: SHA-256, AES-256")
+            .define(SALT_LEN_CONFIG, ConfigDef.Type.INT, SALT_LEN_DEFALUT, ConfigDef.Importance.MEDIUM,
+                    "Specifies the salt byte length. The longer the length, the more complex the encryption.")
+            .define(KEY_STRETCHING_CONFIG, ConfigDef.Type.INT, KEY_STRETCHING_DEFALUT, ConfigDef.Importance.MEDIUM,
+                    "Specifies the number of key-stretching repetitions. The more recalls, the more complex the encryption.");
 
 
     private static final String PURPOSE = "Data encription replacement for CIGNA.";
@@ -106,26 +117,26 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
     }
 
     private Set<String> columnField;
-
+    private static String cipherType;
+    private static int saltLen;
+    private static int keyStretchingRepeat;
 
     @Override
     public void configure(final Map<String, ?> props) {
         this.config = new SimpleConfig(CONFIG_DEF, props);
         columnField = new HashSet<>(config.getList(COLUMN_FIELD_CONFIG));
+        cipherType = config.getString(CIPHER_TYPE_CONFIG);
+        saltLen = config.getInt(SALT_LEN_CONFIG);
+        keyStretchingRepeat = config.getInt(KEY_STRETCHING_CONFIG);
+        System.out.println(":TIMEGATE: configure method cipherType :"+cipherType);
+        System.out.println(":TIMEGATE: configure method saltLen :"+saltLen);
+        System.out.println(":TIMEGATE: configure method keyStretchingRepeat :"+keyStretchingRepeat);
 
         for (String field : columnField) {
-            System.out.println(":TIMEGATE: configure method columnfiled size :"+columnField.size());
-            System.out.println(":TIMEGATE: configure method columnfiled :"+field);
-            System.out.println(":TIMEGATE: configure method =============================== :");
+            System.out.println(":TIMEGATE: configure method columnFiled :"+field);
         }
-//        System.out.println(":TIMEGATE: configure method columnfiled.contain EMPLOYEES.JOB_ID :"+columnfield.contains("EMPLOYEES.JOB_ID"));
-//        System.out.println(":TIMEGATE: configure method columnfiled.contain EMPLOYEES.FIRST_NAME :"+columnfield.contains("EMPLOYEES.FIRST_NAME"));
-//        System.out.println(":TIMEGATE: configure method columnfiled.contain EMPLOYEES.EMPLOYEE_ID :"+columnfield.contains("EMPLOYEES.EMPLOYEE_ID"));
-//        System.out.println(":TIMEGATE: configure method ------------------------- :");
-//        customreplacement = config.getString(CUSTOMREPLACEMENT_CONFIG);
-//        messagedigest = config.getString(MESSAGEDIGEST_CONFIG);
-//        System.out.println(":TIMEGATE: configure method messagedigest :"+messagedigest);
-//        System.out.println(":TIMEGATE: configure method messagedigest #########################################:");
+        System.out.println(":TIMEGATE: configure method =============================== End!! :");
+
     }
 
     @Override
@@ -223,13 +234,22 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
      * @return 암호화 된 Value를 리턴
      */
     private static Object cipherWithCustomReplacement(Object value) {
-//        System.out.println(":TIMEGATE: cipherWithCustomReplacement value : " + value);
+        System.out.println(":TIMEGATE: cipherWithCustomReplacement value : " + value);
         Function<String, ?> replacementMapper = REPLACEMENT_MAPPING_FUNC.get(value.getClass());
         if (replacementMapper == null) {
-            throw new DataException("Cannot hashCode() value of type " + value.getClass() + " with custom replacement.");
+            throw new DataException("Cannot Encription value of type " + value.getClass() + " with custom replacement.");
         }
         try {
+//            암호화 타입 및 설정에 따른 암호화
+            Pbkdf2Cipher.transformType(value, cipherType, saltLen, keyStretchingRepeat);
+
+
+
+
+
+
             return replacementMapper.apply(MessageDigestTransform.getTransformMessage(value));
+//            return replacementMapper.apply(MessageDigestTransform.getTransformMessage(value));
         } catch (NumberFormatException ex) {
             throw new DataException("Unable to convert SHA256 to number", ex);
         } catch (Exception ex){
