@@ -43,9 +43,10 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 
 /**
- * 기본적으로 CipherField의 Field는 동일한 동작을 하나, customreplacement는
- * "customcigna"일 경우 Hashcode()로 Hashing처리함
- * "customcigna" 이외의 값일 경우 CipherField의 Replacement와 동일하게 처리
+ * 암호화 변환 대상이 되는 필드의 데이터를 암호화 한다.
+ * cipher.type에 따라 SHA-256, AES-256으로 암호화 한다.
+ * AES-256의 경우 데이터 건 별 KEY생성 또는 전체 데이터에 하나의 KEY를 생성 할 예정(요구사항에 따라 변경예정)
+ * AES-256의 경우 암호화시 생성한 KEY를 어떻게 처리 할 것인가? DB 혹은 파일등... (요구사항에 따라 변경예정)
  * @param <R>
  */
 public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Transformation<R> {
@@ -57,21 +58,23 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
                     + "</code>) or value (<code>" + ReplaceCipher.Value.class.getName() + "</code>).";
 
     private SimpleConfig config;
-    private static final String COLUMNFIELD_CONFIG = "columnfield";
-//    private static final String CUSTOMREPLACEMENT_CONFIG = "customreplacement";
-//    private static final String MESSAGEDIGEST_CONFIG = "messagedigest";
+    private static final String COLUMN_FIELD_CONFIG = "column.field";
+    private static final String COLUMN_FIELD_DEFAULT = "";
+    private static final String CIPHER_TYPE_CONFIG = "cipher.type";
+//    private static final String CIPHER_TYPE_DEFAULT = "SHA-256";
+
+    private static final String TYPE_SHA256 = "SHA-256";
+    private static final String TYPE_AES256 = "AES-256";
 
 
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
-            .define(COLUMNFIELD_CONFIG, ConfigDef.Type.LIST, ConfigDef.NO_DEFAULT_VALUE, new NonEmptyListValidator(),
-                    ConfigDef.Importance.HIGH, "Name of the field to cipher as the default value of the data type.");
-//            .define(CUSTOMREPLACEMENT_CONFIG, ConfigDef.Type.STRING, null, new ConfigDef.NonEmptyString(),
-//                    ConfigDef.Importance.LOW, "Custom value hashcode replacement, that will be applied to all"
-//                            + " 'columnfield' values (numeric or non-empty string values only).");
-//            .define(MESSAGEDIGEST_CONFIG, ConfigDef.Type.STRING, "MD5", new ConfigDef.NonEmptyString(),
-//                    ConfigDef.Importance.HIGH, "Set the message digest type. Valid values are MD5(Default Value), SHA256, HASH.");
+            .define(COLUMN_FIELD_CONFIG, ConfigDef.Type.LIST, ConfigDef.NO_DEFAULT_VALUE, new NonEmptyListValidator(),
+                    ConfigDef.Importance.HIGH, "DB column including the field name described is subject to encryption.")
+            .define(CIPHER_TYPE_CONFIG, ConfigDef.Type.STRING, TYPE_SHA256,ConfigDef.ValidString.in(TYPE_SHA256, TYPE_AES256),
+                    ConfigDef.Importance.HIGH, "The desired cipher type: SHA-256, AES-256");
 
-    private static final String PURPOSE = "Data hashing replacement for cigna.";
+
+    private static final String PURPOSE = "Data encription replacement for CIGNA.";
 
     private static final Map<Class<?>, Function<String, ?>> REPLACEMENT_MAPPING_FUNC = new HashMap<>();
     private static final Map<Class<?>, Object> PRIMITIVE_VALUE_MAPPING = new HashMap<>();
@@ -102,17 +105,16 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 
     }
 
-    private Set<String> columnfield;
-    private String customreplacement;
-    private static String messagedigest;
+    private Set<String> columnField;
+
 
     @Override
     public void configure(final Map<String, ?> props) {
         this.config = new SimpleConfig(CONFIG_DEF, props);
-        columnfield = new HashSet<>(config.getList(COLUMNFIELD_CONFIG));
+        columnField = new HashSet<>(config.getList(COLUMN_FIELD_CONFIG));
 
-        for (String field : columnfield) {
-            System.out.println(":TIMEGATE: configure method columnfiled size :"+columnfield.size());
+        for (String field : columnField) {
+            System.out.println(":TIMEGATE: configure method columnfiled size :"+columnField.size());
             System.out.println(":TIMEGATE: configure method columnfiled :"+field);
             System.out.println(":TIMEGATE: configure method =============================== :");
         }
@@ -141,7 +143,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 //        System.out.println(":TIMEGATE: applySchemaless class :");
         final Map<String, Object> value = requireMap(operatingValue(record), PURPOSE);
         final HashMap<String, Object> updatedValue = new HashMap<>(value);
-        for (String field : columnfield) {
+        for (String field : columnField) {
             updatedValue.put(field, ciphered(value.get(field)));
         }
         return newRecord(record, updatedValue);
@@ -168,8 +170,8 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 //            field.name()에 대한 값을 columnfield와 비교 하여 마스크 처리
 //            columnfield의 값이 table.column 즉 topic.column
 
-            System.out.println(":TIMEGATE: applyWithSchema class : columnfield :"+columnfield);
-            if(columnfield.contains(record.topic()+"."+field.name())){
+            System.out.println(":TIMEGATE: applyWithSchema class : columnField :"+columnField);
+            if(columnField.contains(record.topic()+"."+field.name())){
 
                 System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, ciphered(origFieldValue));
@@ -215,6 +217,11 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
         return cipheredValue;
     }
 
+    /**
+     * 데이터 Value를 변환 하는 Method
+     * @param value
+     * @return 암호화 된 Value를 리턴
+     */
     private static Object cipherWithCustomReplacement(Object value) {
 //        System.out.println(":TIMEGATE: cipherWithCustomReplacement value : " + value);
         Function<String, ?> replacementMapper = REPLACEMENT_MAPPING_FUNC.get(value.getClass());

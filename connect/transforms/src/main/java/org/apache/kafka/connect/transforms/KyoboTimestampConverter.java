@@ -469,12 +469,15 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         if (sourceTranslator == null) {
             throw new ConnectException("Unsupported timestamp type: " + timestampFormat);
         }
-        String strTime = timestamp.toString();
-        String unixMills = strTime.substring(0, strTime.length()-3);
+        String unixTime = timestamp.toString();
+        int unixTimeLen = unixTime.length();
+        if(unixTimeLen == 16){
+            unixTime = unixTime.substring(0, unixTimeLen-3);
+        }
 //        소스 UTC -> Topic GMT변환됨 -> 싱크 GMT-9시간
-        long GMTTransUtc = Long.parseLong(unixMills) - 32400000L;
+//        long GMTTransUtc = Long.parseLong(unixMills) - 32400000L;
 
-        Date rawTimestamp = sourceTranslator.toRaw(config, GMTTransUtc);
+        Date rawTimestamp = sourceTranslator.toRaw(config, Long.parseLong(unixTime));
 
         TimestampTranslator targetTranslator = TRANSLATORS.get(type);
         if (targetTranslator == null) {
