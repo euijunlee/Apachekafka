@@ -26,6 +26,13 @@ public class Pbkdf2Cipher {
         Pbkdf2Cipher.secretKeySpec = keySpec;
     }
 
+    public static void setSpec(int repeat) throws UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeySpecException {
+        String keyStr = randomStrGen(32);
+        String ivStr = keyStr.substring(0, 16);
+        createKeySpec(keyStr, repeat);
+        createIVSpec(ivStr, repeat);
+    }
+
     public static String transformType(Object value, String cipherType, int saltByte, int repeat) throws Exception {
 //        현재는 데이터 마다 spec 및 key 생성
 
@@ -36,8 +43,12 @@ public class Pbkdf2Cipher {
             case "AES-256":
                 String keyStr = randomStrGen(32);
                 String ivStr = keyStr.substring(0, 16);
+                System.out.println(":TIMEGATE: transformType createKeySpec keyStr : " + keyStr);
+                System.out.println(":TIMEGATE: transformType createIVSpec ivStr : " + ivStr);
                 createKeySpec(keyStr, repeat);
                 createIVSpec(ivStr, repeat);
+                System.out.println(":TIMEGATE: transformType createKeySpec : " + secretKeySpec);
+                System.out.println(":TIMEGATE: transformType createIVSpec : " + ivSpec);
                 return getEncryptValue(value.toString());
 //                break;
             default:
@@ -130,8 +141,8 @@ public class Pbkdf2Cipher {
 
         SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2WITH_MO_SHA1);
         // 128bit(16byte) 스펙 생성
-        PBEKeySpec pbeKeySpec = new PBEKeySpec(IV.toCharArray(), saltedBytes, repeat, 128);
-        Key secretIV = factory.generateSecret(pbeKeySpec);
+        PBEKeySpec pbeIvSpec = new PBEKeySpec(IV.toCharArray(), saltedBytes, repeat, 128);
+        Key secretIV = factory.generateSecret(pbeIvSpec);
 
         byte[] iv = new byte[16];
         System.arraycopy(secretIV.getEncoded(), 0, iv, 0, 16);
@@ -163,6 +174,42 @@ public class Pbkdf2Cipher {
     public static String getDecryptValue(String encodedMsg) throws Exception {
         Cipher c = Cipher.getInstance(AL_MO_BL_PAD);
         c.init(Cipher.DECRYPT_MODE, secretKeySpec, ivSpec);
+        byte[] decodeByte = Base64.getDecoder().decode(encodedMsg);
+//        System.out.println(decodeByte.length);
+//        System.out.println(new String(c.doFinal(decodeByte), "UTF-8"));
+        return new String(c.doFinal(decodeByte), "UTF-8");
+    }
+
+    /**
+     * key와 key-stretching 길이를 알고 복호화 수행
+     * @param encodedMsg
+     * @param baseKey
+     * @param repeat
+     * @return
+     * @throws Exception
+     */
+    public static String decryptValue(String encodedMsg, String baseKey, int repeat) throws Exception {
+
+        byte[] keySaltedBytes = getSHA256ForAES(baseKey);
+        byte[] IvSaltedBytes = getSHA256ForAES(baseKey.substring(0, 16));
+        String ivStr = baseKey.substring(0, 16);
+        SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2WITH_MO_SHA1);
+        PBEKeySpec pbeKeySpec = new PBEKeySpec(baseKey.toCharArray(), keySaltedBytes, repeat, 256);
+        PBEKeySpec pbeIvSpec = new PBEKeySpec(ivStr.toCharArray(), IvSaltedBytes, repeat, 128);
+        Key secretKey = factory.generateSecret(pbeKeySpec);
+        Key secretIv = factory.generateSecret(pbeIvSpec);
+
+        byte[] key = new byte[32];
+        byte[] iv = new byte[16];
+        System.arraycopy(secretKey.getEncoded(), 0, key, 0, key.length);
+        System.arraycopy(secretIv.getEncoded(), 0, iv, 0, 16);
+
+        //AES 알고리즘을 적용하여 암호화키 생성
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        Cipher c = Cipher.getInstance(AL_MO_BL_PAD);
+        c.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
         byte[] decodeByte = Base64.getDecoder().decode(encodedMsg);
 //        System.out.println(decodeByte.length);
 //        System.out.println(new String(c.doFinal(decodeByte), "UTF-8"));
