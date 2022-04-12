@@ -43,12 +43,12 @@ public class Pbkdf2Cipher {
             case "AES-256":
                 String keyStr = randomStrGen(32);
                 String ivStr = keyStr.substring(0, 16);
-                System.out.println(":TIMEGATE: transformType createKeySpec keyStr : " + keyStr);
-                System.out.println(":TIMEGATE: transformType createIVSpec ivStr : " + ivStr);
+//                System.out.println(":TIMEGATE: transformType createKeySpec keyStr : " + keyStr);
+//                System.out.println(":TIMEGATE: transformType createIVSpec ivStr : " + ivStr);
                 createKeySpec(keyStr, repeat);
                 createIVSpec(ivStr, repeat);
-                System.out.println(":TIMEGATE: transformType createKeySpec : " + secretKeySpec);
-                System.out.println(":TIMEGATE: transformType createIVSpec : " + ivSpec);
+//                System.out.println(":TIMEGATE: transformType createKeySpec : " + secretKeySpec);
+//                System.out.println(":TIMEGATE: transformType createIVSpec : " + ivSpec);
                 return getEncryptValue(value.toString());
 //                break;
             default:
