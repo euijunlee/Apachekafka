@@ -248,11 +248,7 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
     private Cache<Schema, Schema> schemaUpdateCache;
 
 
-    /**
-     * Checks if a string is null, empty or whitespace only.
-     * @param str a string to be checked
-     * @return true if the string is null, empty or whitespace only; otherwise, return false.
-     */
+
     public static boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
     }
@@ -415,9 +411,7 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         }
     }
 
-    /**
-     * Determine the type/format of the timestamp based on the schema
-     */
+
     private String timestampTypeFromSchema(Schema schema) {
         if (Timestamp.LOGICAL_NAME.equals(schema.name())) {
             return TYPE_TIMESTAMP;
@@ -435,9 +429,7 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         throw new ConnectException("Schema " + schema + " does not correspond to a known timestamp type format");
     }
 
-    /**
-     * Infer the type/format of the timestamp based on the raw Java type
-     */
+
     private String inferTimestampType(Object timestamp) {
         // Note that we can't infer all types, e.g. Date/Time/Timestamp all have the same runtime representation as a
         // java.util.Date
@@ -451,12 +443,7 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         throw new DataException("KyoboTimestampConverter does not support " + timestamp.getClass() + " objects as timestamps");
     }
 
-    /**
-     * Convert the given timestamp to the target timestamp format.
-     * @param timestamp the input timestamp, may be null
-     * @param timestampFormat the format of the timestamp, or null if the format should be inferred
-     * @return the converted timestamp
-     */
+
     private Object convertTimestamp(Object timestamp, String timestampFormat) {
         if (timestamp == null) {
             return null;
@@ -474,8 +461,6 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         if(unixTimeLen == 16){
             unixTime = unixTime.substring(0, unixTimeLen-3);
         }
-//        소스 UTC -> Topic GMT변환됨 -> 싱크 GMT-9시간
-//        long GMTTransUtc = Long.parseLong(unixMills) - 32400000L;
 
         Date rawTimestamp = sourceTranslator.toRaw(config, Long.parseLong(unixTime));
 
