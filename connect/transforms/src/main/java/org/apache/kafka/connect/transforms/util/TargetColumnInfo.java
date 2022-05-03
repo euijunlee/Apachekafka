@@ -29,22 +29,22 @@ public class TargetColumnInfo {
                 info[2] = rs.getString("ENCRP_KEY");
 
                 infoHmap.put(key, info);
-//                System.out.printf("%s %s %s %s%n", col_nm, dmn_pnm, encrp_cd, encrp_key);
+                System.out.printf(":TIMEGATE: %s %s %s %s%n", key, info[0], info[1], info[2]);
             }
 //            System.out.println(infoHmap.containsKey("CNSL_NO"));
 //
-//            infoHmap.forEach((key, value)->{
-//                System.out.println("col_nm:"+key);
-//                System.out.println("dmn_pnm:"+value[0]);
-//                System.out.println("encrp_cd:"+value[1]);
-//                System.out.println("encrp_key:"+value[2]);
-//            });
+            infoHmap.forEach((key, value)->{
+                System.out.println("col_nm:"+key);
+                System.out.println("dmn_pnm:"+value[0]);
+                System.out.println("encrp_cd:"+value[1]);
+                System.out.println("encrp_key:"+value[2]);
+            });
             return infoHmap;
 
         }catch (SQLException sqle) {
-            System.out.println("[SQL Error : " + sqle.getMessage() + "]");
+            System.out.println("[:LINAERROR:SQL Error : " + sqle.getMessage() + "]");
         } catch (ClassNotFoundException cnfe) {
-            System.out.println("[JDBC Connector Driver ClassNotFoundException : " + cnfe.getMessage() + "]");
+            System.out.println("[:LINAERROR:JDBC Connector Driver ClassNotFoundException : " + cnfe.getMessage() + "]");
         }catch (Exception e) {
             System.out.println(e.getMessage());
         } finally {

@@ -34,6 +34,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
+import org.apache.kafka.connect.transforms.util.TargetColumnInfo;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -45,12 +46,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.logging.Logger;
 
+import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.SEVERE;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStructOrNull;
 
 public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implements Transformation<R> {
-
+    public static Logger logger = Logger.getLogger(KyoboTimestampConverter.class.getName());
     public static final String OVERVIEW_DOC =
             "Convert timestamps between different formats such as Unix epoch, strings, and Connect Date/Timestamp types."
                     + "Applies to individual fields or to the entire value."
@@ -89,6 +93,8 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
     public static final Schema OPTIONAL_DATE_SCHEMA = org.apache.kafka.connect.data.Date.builder().optional().schema();
     public static final Schema OPTIONAL_TIMESTAMP_SCHEMA = Timestamp.builder().optional().schema();
     public static final Schema OPTIONAL_TIME_SCHEMA = Time.builder().optional().schema();
+
+    private Map<String, String[]> infoHmap = new HashMap<>();
 
     private interface TimestampTranslator {
         /**
@@ -247,20 +253,38 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
     private SimpleDateFormat format;
     private Cache<Schema, Schema> schemaUpdateCache;
 
-
-
     public static boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
     }
+
+
     @Override
     public void configure(Map<String, ?> props) {
+        System.out.println(":TIMEGATE: configure method start : ===================");
+        String dbDriver = "oracle.jdbc.driver.OracleDriver";
+        String dbIp = "10.0.0.180";
+        String dbPort = "1521";
+        String dbSchema = "orcl";
+        String dbUser = "tg_test";
+        String dbPwd = "tgtest1";
+
+        logger.info(":TIMEGATE: configure logger.info");
+        logger.log(SEVERE,"AA configure logger.log.level severe");
+        logger.log(INFO,":TIMEGATE: configure logger.log.level info");
+
+//        columnRrno = config.getString(COLUMN_RRNO_CONFIG);
+//        columnAddr = config.getString(COLUMN_ADDR_CONFIG);
+        System.out.println(":TIMEGATE: configure method TEST :");
+        System.out.println(":TIMEGATE: DB접속정보 :"+dbIp+":"+dbPort+":"+dbSchema+":"+dbUser+":"+dbPwd);
+        infoHmap = TargetColumnInfo.getColumnInfo(dbIp, dbPort, dbSchema, dbUser, dbPwd, dbDriver);
+        System.out.println(":TIMEGATE: configure method infoHmap :"+infoHmap);
         this.simpleConfig = new SimpleConfig(CONFIG_DEF, props);
         fields = new HashSet<>(simpleConfig.getList(FIELD_CONFIG));
-//        for (String field : fields) {
-//            System.out.println(":TIMEGATE: configure method field size :"+fields.size());
-//            System.out.println(":TIMEGATE: configure method filed :"+field);
-//            System.out.println(":TIMEGATE: configure method =============================== :");
-//        }
+        for (String field : fields) {
+            System.out.println(":TIMEGATE: configure method field size :"+fields.size());
+            System.out.println(":TIMEGATE: configure method filed :"+field);
+            System.out.println(":TIMEGATE: configure method =============================== :");
+        }
 
         type = simpleConfig.getString(TARGET_TYPE_CONFIG);
         formatPattern = simpleConfig.getString(FORMAT_CONFIG);

@@ -125,18 +125,15 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
         cipherType = config.getString(CIPHER_TYPE_CONFIG);
         saltLen = config.getInt(SALT_LEN_CONFIG);
         keyStretchingRepeat = config.getInt(KEY_STRETCHING_CONFIG);
-//        System.out.println(":TIMEGATE: configure method cipherType :"+cipherType);
-//        System.out.println(":TIMEGATE: configure method saltLen :"+saltLen);
-//        System.out.println(":TIMEGATE: configure method keyStretchingRepeat :"+keyStretchingRepeat);
-
-//        여기서 최초 스펙 1회 생성
-//        Pbkdf2Cipher.setSpec(keyStretchingRepeat);
+        System.out.println(":TIMEGATE: configure method cipherType :"+cipherType);
+        System.out.println(":TIMEGATE: configure method saltLen :"+saltLen);
+        System.out.println(":TIMEGATE: configure method keyStretchingRepeat :"+keyStretchingRepeat);
 
 
-//        for (String field : columnField) {
-//            System.out.println(":TIMEGATE: configure method columnFiled :"+field);
-//        }
-//        System.out.println(":TIMEGATE: configure method =============================== End!! :");
+        for (String field : columnField) {
+            System.out.println(":TIMEGATE: configure method columnFiled :"+field);
+        }
+        System.out.println(":TIMEGATE: configure method =============================== End!! :");
 
     }
 
@@ -162,29 +159,28 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
     }
 
     private R applyWithSchema(R record) {
-//        System.out.println(":TIMEGATE: applyWithSchema class :");
+        System.out.println(":TIMEGATE: applyWithSchema class :");
         final Struct value = requireStruct(operatingValue(record), PURPOSE);
-//        System.out.println(":TIMEGATE: applyWithSchema class : Struct Type value :"+value);
-//        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
-//        value.put(String fieldName, Object value)
-//        value.put(Field field, Object. value)
+        System.out.println(":TIMEGATE: applyWithSchema class : Struct Type value :"+value);
+        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
+
 
         final Struct updatedValue = new Struct(value.schema());
         for (Field field : value.schema().fields()) {
 //            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
 
             final Object origFieldValue = value.get(field);
-//            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
-//            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
-//            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
+            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
+            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
+            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
 //            columnfield의 값이 table.column 즉 topic.column
 
-//            System.out.println(":TIMEGATE: applyWithSchema class : columnField :"+columnField);
+            System.out.println(":TIMEGATE: applyWithSchema class : columnField :"+columnField);
 
 
             if(columnField.contains(record.topic()+"."+field.name())){
 
-//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
+                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, ciphered(origFieldValue));
             }else if(columnField.contains(record.topic()+"."+field.name()+"#JUMIN")){
 
@@ -193,7 +189,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 
                 updatedValue.put(field, cipheredEtc(origFieldValue, "JUSO"));
             }else{
-//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
+                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, origFieldValue);
             }
 //            updatedValue.put(field, columnfield.contains(record.topic()+"."+field.name()) ? ciphered(origFieldValue) : origFieldValue);
@@ -204,8 +200,8 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 
     private static Object cipherWithNullValue(Object value) {
         Object cipheredValue = PRIMITIVE_VALUE_MAPPING.get(value.getClass());
-//        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
-//        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
+        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
+        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
         if (cipheredValue == null) {
             if (value instanceof List)
                 cipheredValue = Collections.emptyList();
@@ -249,7 +245,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
      * @return 암호화 된 Value를 리턴
      */
     private static Object cipherWithCustomTransformsEtc(Object value, String cipherType, int saltLen, int keyStretchingRepeat, String type) {
-//        System.out.println(":TIMEGATE: cipherWithCustomReplacement value : " + value);
+        System.out.println(":TIMEGATE: cipherWithCustomReplacement value : " + value);
         Function<String, ?> replacementMapper = REPLACEMENT_MAPPING_FUNC.get(value.getClass());
         if (replacementMapper == null) {
             throw new DataException("Cannot Encription value of type " + value.getClass() + " with custom replacement.");
@@ -257,7 +253,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
         try {
             // 암호화 타입 및 설정에 따른 암호화
             String encryptedValue = "";
-//            System.out.println(":TIMEGATE: cipherWithCustomReplacement cipherType : " + cipherType);
+            System.out.println(":TIMEGATE: cipherWithCustomReplacement cipherType : " + cipherType);
 
             // 주민번호 7자리 이외의 문자열을 sha-256으로 암호화 후에 주민번호와 합치기
             if("JUMIN".equals(type)){
@@ -265,7 +261,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
                 String juminStrEtc = value.toString().substring(7,value.toString().length());
                 encryptedValue = juminStr+Pbkdf2Cipher.transformType(juminStrEtc, cipherType, saltLen, keyStretchingRepeat);
 
-//                System.out.println(":TIMEGATE: cipherWithCustomReplacement encryptedValue : " + encryptedValue);
+                System.out.println(":TIMEGATE: cipherWithCustomReplacement encryptedValue : " + encryptedValue);
             }else if("JUSO".equals(type)){
 //                String[] juso = new String[2];
                 String[] juso = JusoRegexUtil.getAddress(value.toString());
@@ -299,8 +295,8 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
         try {
 //            암호화 타입 및 설정에 따른 암호화
             String encryptedValue = Pbkdf2Cipher.transformType(value, cipherType, saltLen, keyStretchingRepeat);
-//            System.out.println(":TIMEGATE: cipherWithCustomReplacement cipherType : " + cipherType);
-//            System.out.println(":TIMEGATE: cipherWithCustomReplacement encryptedValue : " + encryptedValue);
+            System.out.println(":TIMEGATE: cipherWithCustomReplacement cipherType : " + cipherType);
+            System.out.println(":TIMEGATE: cipherWithCustomReplacement encryptedValue : " + encryptedValue);
             return replacementMapper.apply(encryptedValue);
 //            return replacementMapper.apply(MessageDigestTransform.getTransformMessage(value));
         } catch (NumberFormatException ex) {
@@ -374,9 +370,9 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 
         @Override
         protected R newRecord(R record, Object updatedValue) {
-//            System.out.println(":TIMEGATE: newRecord ===Key=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
-//                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",updatedValue:"+updatedValue+",record.valueSchema()"+
-//                    record.valueSchema()+",record.value():"+record.value());
+            System.out.println(":TIMEGATE: newRecord ===Key=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
+                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",updatedValue:"+updatedValue+",record.valueSchema()"+
+                    record.valueSchema()+",record.value():"+record.value());
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), updatedValue, record.valueSchema(), record.value(), record.timestamp());
         }
 
@@ -400,9 +396,9 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
 
         @Override
         protected R newRecord(R record, Object updatedValue) {
-//            System.out.println(":TIMEGATE: newRecord ===Value=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
-//                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",record.key():"+record.key()+",record.valueSchema()"+
-//                    record.valueSchema()+",updatedValue:"+updatedValue);
+            System.out.println(":TIMEGATE: newRecord ===Value=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
+                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",record.key():"+record.key()+",record.valueSchema()"+
+                    record.valueSchema()+",updatedValue:"+updatedValue);
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), updatedValue, record.timestamp());
         }
 

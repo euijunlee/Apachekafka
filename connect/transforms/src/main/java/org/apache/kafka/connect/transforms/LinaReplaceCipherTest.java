@@ -46,15 +46,15 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  * AES-256의 경우 암호화시 생성한 KEY를 어떻게 처리 할 것인가? DB 혹은 파일등... (요구사항에 따라 변경예정)
  * @param <R>
  */
-public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implements Transformation<R> {
     public static Logger logger = Logger.getLogger(LinaReplaceCipher.class.getName());
 //    private static org.apache.log4j.Logger log = Logger.getLogger(LinaReplaceCipher.class.getName());
 
     public static final String OVERVIEW_DOC =
             "Cipher specified column fields with a valid null value for the field type (i.e. 0, false, empty string, and so on)."
                     + "<p/>For numeric and string fields, an optional replacement value can be specified that is converted to the correct type."
-                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + LinaReplaceCipher.Key.class.getName()
-                    + "</code>) or value (<code>" + LinaReplaceCipher.Value.class.getName() + "</code>).";
+                    + "<p/>Use the concrete transformation type designed for the record key (<code>" + LinaReplaceCipherTest.Key.class.getName()
+                    + "</code>) or value (<code>" + LinaReplaceCipherTest.Value.class.getName() + "</code>).";
 
     private SimpleConfig config;
     private static final String DB_DRIVER_CONFIG = "db.driver";
@@ -164,6 +164,14 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 
     //    암호화 대상 컬럼 정보
     private Map<String, String[]> infoHmap = new HashMap<>();
+    private String col_nm;
+    private String dmn_pnm;
+    private String encrp_cd;
+    private String encrp_key;
+
+    private String ifRrno1;
+    private String ifRrno2;
+    private String ifAddr1;
 
     private Cache<Schema, Schema> schemaUpdateCache;
 
@@ -189,6 +197,19 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         System.out.println(":TIMEGATE: configure method infoHmap :"+infoHmap);
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
 
+
+//        System.out.println(":TIMEGATE: configure method cipherType :"+cipherType);
+//        System.out.println(":TIMEGATE: configure method saltLen :"+saltLen);
+//        System.out.println(":TIMEGATE: configure method keyStretchingRepeat :"+keyStretchingRepeat);
+
+//        여기서 최초 스펙 1회 생성
+//        Pbkdf2Cipher.setSpec(keyStretchingRepeat);
+
+
+//        for (String field : columnField) {
+//            System.out.println(":TIMEGATE: configure method columnFiled :"+field);
+//        }
+//        System.out.println(":TIMEGATE: configure method =============================== End!! :");
 
     }
 
@@ -223,136 +244,100 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 //        value.put(String fieldName, Object value)
 //        value.put(Field field, Object. value)
 
+        Schema defaultSchema = value.schema();
+//        스키마 업데이트가 필요한 항목일때 업데이트 함
+        Schema updatedSchemaRrno = null;
+//        Schema updatedSchemaRrno = schemaUpdateCache.get(value.schema());
+//        if (updatedSchemaRrno == null) {
+//            updatedSchemaRrno = rrnoUpdatedSchema(value.schema(),"RRNO");
+//            schemaUpdateCache.put(value.schema(), updatedSchemaRrno);
+//        }
 
-        Schema updatedSchema = schemaUpdateCache.get(value.schema());
+        Schema updatedSchemaAddr = null;
+//        Schema updatedSchemaAddr = schemaUpdateCache.get(value.schema());
+//        if (updatedSchemaAddr == null) {
+//            updatedSchemaAddr = addrUpdatedSchema(value.schema(),"ADDR");
+//            schemaUpdateCache.put(value.schema(), updatedSchemaAddr);
+//        }
 
+
+//        기존 스키마 사용
+        final Struct updatedValue = new Struct(defaultSchema);
+//        변경된 스키마 rrno
+//        final Struct updatedValueRrno = null;
+        Struct updatedValueRrno = null;
+//        변경된 스키마 addr
+//        final Struct updatedValueAddr = null;
+        Struct updatedValueAddr = null;
+
+        System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+value.schema().fields());
         for (Field field : value.schema().fields()) {
-            if(infoHmap.containsKey(field.name())){
-                if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno)){
-                    if(updatedSchema == null) {
-                        updatedSchema = fieldUpdatedSchema(value.schema(), field.name(), columnRrno);
-//                    builder = fieldUpdatedSchemaBuilder(value.schema(), field.name(), columnRrno);
-//                        schemaUpdateCache.put(value.schema(), updatedSchema);
-                    }else{
-                        updatedSchema = fieldUpdatedSchema(updatedSchema, field.name(), columnRrno);
-//                        schemaUpdateCache.put(value.schema(), updatedSchema);
-                    }
+            updatedValueRrno.put(field, updatedValue.get(field));
 
-                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr)){
-                    if(updatedSchema == null) {
-                        updatedSchema = fieldUpdatedSchema(value.schema(), field.name(), columnAddr);
-//                    builder = fieldUpdatedSchemaBuilder(value.schema(), field.name(), columnAddr);
-//                        schemaUpdateCache.put(value.schema(), updatedSchema);
-                    }else{
-                        updatedSchema = fieldUpdatedSchema(updatedSchema, field.name(), columnAddr);
-//                        schemaUpdateCache.put(value.schema(), updatedSchema);
-                    }
-                }
-//                Schema updatedSchema = schemaUpdateCache.get(value.schema());
-            }
+            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
 
-        }
-
-
-        final Struct updatedValue = new Struct(updatedSchema);
-        System.out.println("====================:TIMEGATE: Schema Creation Completed : updatedValue.schema().fields() :"+updatedValue.schema().fields());
-
-        for (Field field : value.schema().fields()) {
             final Object origFieldValue = value.get(field);
-//            updatedValue.put(field.name(), origFieldValue == null ? "" : origFieldValue);
-            updatedValue.put(field.name(), origFieldValue);
-            System.out.println("+++:TIMEGATE: Values : "+field.name()+":"+origFieldValue);
+            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
+            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
+            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
+            /**
+             * 기본적으로 대상 필드의 데이터는 전체 암호화
+             * 주민 번호는 필드 2개 추가
+             * 주소는 필드 1개 추가
+             */
+
             if(infoHmap.containsKey(field.name())){
+                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() DB리스트 포함 :"+record.topic()+"."+field.name());
                 updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
 
-                if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno) && updatedSchema != null){
-                    updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,4));
-                    updatedValue.put(field.name()+"_2", origFieldValue.toString().substring(6,7));
-
-                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr) && updatedSchema != null){
-                    String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
-                    if ("NOMATCH".equals(juso[0])){
-                        updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,13));
-                    }else{
-                        updatedValue.put(field.name()+"_1", juso[0]);
+//                주민번호일 경우 컬럼 두개 추가 및 기존 컬럼 전체 암호화
+                if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno)){
+                    System.out.println(":TIMEGATE: applyWithSchema class : if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno)) :"+field.name()+"::"+columnRrno);
+                    updatedSchemaRrno = schemaUpdateCache.get(value.schema());
+                    if (updatedSchemaRrno == null) {
+                        updatedSchemaRrno = rrnoUpdatedSchema(value.schema(),field.name());
+                        schemaUpdateCache.put(value.schema(), updatedSchemaRrno);
+                        updatedValueRrno = new Struct(updatedSchemaRrno);
+                        System.out.println(":TIMEGATE: applyWithSchema class : updatedSchemaRrno 스키마 업데이트 :"+value.schema()+"::"+updatedSchemaRrno);
                     }
 
-                }
-//                Schema updatedSchema = schemaUpdateCache.get(value.schema());
-            }
 
+                    updatedValueRrno.put(field.name()+"1", origFieldValue.toString().substring(0,4));
+                    updatedValueRrno.put(field.name()+"2", origFieldValue.toString().substring(6,7));
+
+                    System.out.println(":TIMEGATE: applyWithSchema class : updatedValueRrno.put(field.name()+\"1,2\", origFieldValue :"+origFieldValue.toString().substring(0,4)+"::"+origFieldValue.toString().substring(6,7));
+
+//                    return newRecord(record, updatedSchemaRrno, updatedValueRrno);
+
+//                주소일 경우 컬럼 한개 추가 및 기존 컬럼 전체 암호화
+                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr)){
+                    System.out.println(":TIMEGATE: applyWithSchema class : if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr)) :"+field.name()+"::"+columnAddr);
+                    updatedSchemaAddr = schemaUpdateCache.get(value.schema());
+                    if (updatedSchemaAddr == null) {
+                        updatedSchemaAddr = addrUpdatedSchema(value.schema(),field.name());
+                        schemaUpdateCache.put(value.schema(), updatedSchemaAddr);
+                        updatedValueAddr = new Struct(updatedSchemaAddr);
+                        System.out.println(":TIMEGATE: applyWithSchema class : updatedSchemaAddr 스키마 업데이트 :"+value.schema()+"::"+updatedSchemaAddr);
+                    }
+
+                    String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
+                    if ("NOMATCH".equals(juso[0])){
+                        updatedValueAddr.put(field.name()+"1", origFieldValue.toString().substring(0,13));
+                    }else{
+                        updatedValueAddr.put(field.name()+"1", juso[0]);
+                    }
+
+//                    return newRecord(record, updatedSchemaAddr, updatedValueAddr);
+
+                }
+            }else{
+                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
+                updatedValue.put(field, origFieldValue);
+
+            }
         }
-        return newRecord(record, updatedSchema, updatedValue);
-//
-//
-//        for (Field field : value.schema().fields()) {
-////            updatedValueRrno.put(field, updatedValue.get(field));
-//
-//            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
-//
-//            final Object origFieldValue = value.get(field);
-//            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
-//            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
-//            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
-//            /**
-//             * 기본적으로 대상 필드의 데이터는 전체 암호화
-//             * 주민 번호는 필드 2개 추가
-//             * 주소는 필드 1개 추가
-//             */
-//
-//            if(infoHmap.containsKey(field.name())){
-//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() DB리스트 포함 :"+record.topic()+"."+field.name());
-//                updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
-//
-////                주민번호일 경우 컬럼 두개 추가 및 기존 컬럼 전체 암호화
-//                if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno)){
-//                    System.out.println(":TIMEGATE: applyWithSchema class : if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno)) :"+field.name()+"::"+columnRrno);
-//                    updatedSchemaRrno = schemaUpdateCache.get(value.schema());
-//                    if (updatedSchemaRrno == null) {
-//                        updatedSchemaRrno = rrnoUpdatedSchema(value.schema(),field.name());
-//                        schemaUpdateCache.put(value.schema(), defaultSchema);
-//                        updatedValueRrno = new Struct(updatedSchemaRrno);
-//                        System.out.println(":TIMEGATE: applyWithSchema class : updatedSchemaRrno 스키마 업데이트 :"+value.schema()+"::"+updatedSchemaRrno);
-//                    }
-//
-//
-//                    updatedValueRrno.put(field.name()+"1", origFieldValue.toString().substring(0,4));
-//                    updatedValueRrno.put(field.name()+"2", origFieldValue.toString().substring(6,7));
-//
-//
-//                    System.out.println(":TIMEGATE: applyWithSchema class : updatedValueRrno.put(field.name()+\"1,2\", origFieldValue :"+origFieldValue.toString().substring(0,4)+"::"+origFieldValue.toString().substring(6,7));
-//
-////                    return newRecord(record, updatedSchemaRrno, updatedValueRrno);
-//
-////                주소일 경우 컬럼 한개 추가 및 기존 컬럼 전체 암호화
-//                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr)){
-//                    System.out.println(":TIMEGATE: applyWithSchema class : if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr)) :"+field.name()+"::"+columnAddr);
-//                    updatedSchemaAddr = schemaUpdateCache.get(value.schema());
-//                    if (updatedSchemaAddr == null) {
-//                        updatedSchemaAddr = addrUpdatedSchema(value.schema(),field.name());
-//                        schemaUpdateCache.put(value.schema(), updatedSchemaAddr);
-//                        updatedValueAddr = new Struct(updatedSchemaAddr);
-//                        System.out.println(":TIMEGATE: applyWithSchema class : updatedSchemaAddr 스키마 업데이트 :"+value.schema()+"::"+updatedSchemaAddr);
-//                    }
-//
-//                    String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
-//                    if ("NOMATCH".equals(juso[0])){
-//                        updatedValueAddr.put(field.name()+"1", origFieldValue.toString().substring(0,13));
-//                    }else{
-//                        updatedValueAddr.put(field.name()+"1", juso[0]);
-//                    }
-//
-////                    return newRecord(record, updatedSchemaAddr, updatedValueAddr);
-//
-//                }
-//            }else{
-//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
-//                updatedValue.put(field, origFieldValue);
-//
-//            }
-//        }
-////        return newRecord(record, updatedSchemaAddr, updatedValueAddr);
-//        return newRecord(record, updatedValue);
+//        return newRecord(record, updatedSchemaAddr, updatedValueAddr);
+        return newRecord(record, updatedValue);
     }
 
 
@@ -400,29 +385,34 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         }
     }
 
-    private Schema fieldUpdatedSchema(Schema schema, String insertField, String type) {
+    private Schema rrnoUpdatedSchema(Schema schema, String insertField) {
         final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
-        System.out.println(":TIMEGATE: fieldUpdatedSchema Method :"+schema+"::"+insertField);
+        System.out.println(":TIMEGATE: rrnoUpdatedSchema Method :"+schema+"::"+insertField);
         for (Field field : schema.fields()) {
-            builder.field(field.name(), field.schema());
             System.out.println(":TIMEGATE: AS-IS field.name(), field.schema() :"+field.name()+"::"+field.schema());
+            builder.field(field.name(), field.schema());
         }
-        if(columnRrno.equals(type)){
-            builder.field(insertField+"_1", Schema.STRING_SCHEMA);
-            builder.field(insertField+"_2", Schema.STRING_SCHEMA);
-            System.out.println("************:TIMEGATE: fieldUpdatedSchema rrno :");
-        }else if(columnAddr.equals(type)){
-            builder.field(insertField+"_1", Schema.STRING_SCHEMA);
-            System.out.println("************:TIMEGATE: fieldUpdatedSchema addr :");
-        }
-
+        builder.field(insertField+"1", Schema.OPTIONAL_STRING_SCHEMA);
+        builder.field(insertField+"2", Schema.OPTIONAL_STRING_SCHEMA);
         for (Field field : builder.build().fields()) {
             System.out.println(":TIMEGATE: TO-BE field.name(), field.schema() :"+field.name()+"::"+field.schema());
+
         }
+        System.out.println(":TIMEGATE: rrnoUpdatedSchema Method ================ end");
 //        builder.field(insertField, staticField.optional ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
         return builder.build();
     }
 
+    private Schema addrUpdatedSchema(Schema schema, String insertField) {
+        final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+
+        for (Field field : schema.fields()) {
+            builder.field(field.name(), field.schema());
+        }
+        builder.field(insertField+"1", Schema.STRING_SCHEMA);
+
+        return builder.build();
+    }
 
     @Override
     public ConfigDef config() {
@@ -444,7 +434,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
     protected abstract R newRecord(R record, Schema updatedSchema, Object updatedValue);
 
 
-    public static final class Key<R extends ConnectRecord<R>> extends LinaReplaceCipher<R> {
+    public static final class Key<R extends ConnectRecord<R>> extends LinaReplaceCipherTest<R> {
 
         @Override
         protected Schema operatingSchema(R record) {
@@ -474,7 +464,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 
     }
 
-    public static final class Value<R extends ConnectRecord<R>> extends LinaReplaceCipher<R> {
+    public static final class Value<R extends ConnectRecord<R>> extends LinaReplaceCipherTest<R> {
 
         @Override
         protected Schema operatingSchema(R record) {
