@@ -132,26 +132,26 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 
     }
 
-    private static final class InsertionSpec {
-        final String name;
-        final boolean optional;
-
-        private InsertionSpec(String name, boolean optional) {
-            this.name = name;
-            this.optional = optional;
-        }
-
-        public static InsertionSpec parse(String spec) {
-            if (spec == null) return null;
-            if (spec.endsWith("?")) {
-                return new InsertionSpec(spec.substring(0, spec.length() - 1), true);
-            }
-            if (spec.endsWith("!")) {
-                return new InsertionSpec(spec.substring(0, spec.length() - 1), false);
-            }
-            return new InsertionSpec(spec, true);
-        }
-    }
+//    private static final class InsertionSpec {
+//        final String name;
+//        final boolean optional;
+//
+//        private InsertionSpec(String name, boolean optional) {
+//            this.name = name;
+//            this.optional = optional;
+//        }
+//
+//        public static InsertionSpec parse(String spec) {
+//            if (spec == null) return null;
+//            if (spec.endsWith("?")) {
+//                return new InsertionSpec(spec.substring(0, spec.length() - 1), true);
+//            }
+//            if (spec.endsWith("!")) {
+//                return new InsertionSpec(spec.substring(0, spec.length() - 1), false);
+//            }
+//            return new InsertionSpec(spec, true);
+//        }
+//    }
 
     //    암호화 대상 정보를 획득을 위한 DB 정보
     private static String dbDriver;
@@ -268,7 +268,8 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
             updatedValue.put(field.name(), origFieldValue);
             System.out.println("+++:LINASTDOUT: Values : "+field.name()+":"+origFieldValue);
             if(infoHmap.containsKey(field.name())){
-                updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
+//                updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
+                updatedValue.put(field, origFieldValue == null || "".equals(origFieldValue)  ? origFieldValue : ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
 
                 if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno) && updatedSchema != null){
                     updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,4));
@@ -277,7 +278,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
                 }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr) && updatedSchema != null){
                     String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
                     if ("NOMATCH".equals(juso[0])){
-                        updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,13));
+                        updatedValue.put(field.name()+"_1", origFieldValue);
                     }else{
                         updatedValue.put(field.name()+"_1", juso[0]);
                     }
