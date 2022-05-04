@@ -261,23 +261,7 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
     @Override
     public void configure(Map<String, ?> props) {
         System.out.println(":TIMEGATE: configure method start : ===================");
-        String dbDriver = "oracle.jdbc.driver.OracleDriver";
-        String dbIp = "10.0.0.180";
-        String dbPort = "1521";
-        String dbSchema = "orcl";
-        String dbUser = "tg_test";
-        String dbPwd = "tgtest1";
 
-        logger.info(":TIMEGATE: configure logger.info");
-        logger.log(SEVERE,"AA configure logger.log.level severe");
-        logger.log(INFO,":TIMEGATE: configure logger.log.level info");
-
-//        columnRrno = config.getString(COLUMN_RRNO_CONFIG);
-//        columnAddr = config.getString(COLUMN_ADDR_CONFIG);
-        System.out.println(":TIMEGATE: configure method TEST :");
-        System.out.println(":TIMEGATE: DB접속정보 :"+dbIp+":"+dbPort+":"+dbSchema+":"+dbUser+":"+dbPwd);
-        infoHmap = TargetColumnInfo.getColumnInfo(dbIp, dbPort, dbSchema, dbUser, dbPwd, dbDriver);
-        System.out.println(":TIMEGATE: configure method infoHmap :"+infoHmap);
         this.simpleConfig = new SimpleConfig(CONFIG_DEF, props);
         fields = new HashSet<>(simpleConfig.getList(FIELD_CONFIG));
         for (String field : fields) {

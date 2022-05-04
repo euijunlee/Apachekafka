@@ -42,17 +42,17 @@ public class DefaultCipher {
 
         switch (cipherType) {
             case "1":
-                System.out.println(":TIMEGATE: transformType sha encrpKey : " + encrpKey);
+                System.out.println(":LINASTDOUT: transformType sha encrpKey : " + encrpKey);
                 return getSHA256Value(value, encrpKey);
 //                break;
             case "2":
                 String ivStr = encrpKey.substring(0, 16);
-                System.out.println(":TIMEGATE: transformType aes encrpKey : " + encrpKey);
+                System.out.println(":LINASTDOUT: transformType aes encrpKey : " + encrpKey);
                 if(secretKeySpec == null || ivKeySpec == null) {
                     createSpec(encrpKey, ivStr);
                 }
-//                System.out.println(":TIMEGATE: transformType createKeySpec : " + secretKeySpec);
-//                System.out.println(":TIMEGATE: transformType createIVSpec : " + ivSpec);
+//                System.out.println(":LINASTDOUT: transformType createKeySpec : " + secretKeySpec);
+//                System.out.println(":LINASTDOUT: transformType createIVSpec : " + ivSpec);
                 return getEncryptValue(value.toString());
 //                break;
             default:

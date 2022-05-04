@@ -5,10 +5,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TargetColumnInfo {
-    private static String sql = "SELECT COL_NM, DMN_PNM, ENCRP_CD, ENCRP_KEY FROM TB_ENCRP_KEY_INFO";
+//    private static String sql = "SELECT COL_NM, DMN_PNM, ENCRP_CD, ENCRP_KEY FROM TB_ENCRP_KEY_INFO";
 
 
-    public static Map<String, String[]> getColumnInfo(String ip, String port, String schema, String user, String pwd, String driver){
+    public static Map<String, String[]> getColumnInfo(String ip, String port, String schema, String user, String pwd, String driver, String insName){
+        String sql = "SELECT COL_NM, DMN_PNM, ENCRP_CD, ENCRP_KEY FROM "+insName+".TB_ENCRP_KEY_INFO";
+        System.out.println(":LINASTDOUT: SQL String :"+sql);
         String url  = "jdbc:oracle:thin:@"+ip+":"+port+":"+schema;
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -29,7 +31,7 @@ public class TargetColumnInfo {
                 info[2] = rs.getString("ENCRP_KEY");
 
                 infoHmap.put(key, info);
-                System.out.printf(":TIMEGATE: %s %s %s %s%n", key, info[0], info[1], info[2]);
+                System.out.printf(":LINASTDOUT: %s %s %s %s%n", key, info[0], info[1], info[2]);
             }
 //            System.out.println(infoHmap.containsKey("CNSL_NO"));
 //

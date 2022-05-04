@@ -69,6 +69,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
     //    private static final String DB_USER_DEFAULT = "";
     private static final String DB_PWD_CONFIG = "db.pwd";
 //    private static final String DB_PWD_DEFAULT = "";
+    private static final String DB_INSNAME_CONFIG ="db.insname";
 
     //    oriField(주민등록 번호 필드) : 9510231XXXXXXXXXXXXX(34자리) -> oriField [전체 암호화], addField1(생년월 4자리) [9510], addfield2(성별 1자리) [1]
     private static final String COLUMN_RRNO_CONFIG = "column.rrno";
@@ -90,6 +91,8 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
             .define(DB_USER_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, new ConfigDef.NonEmptyString(),
                     ConfigDef.Importance.HIGH, "The database user where the encryption target column data is stored.")
             .define(DB_PWD_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, new ConfigDef.NonEmptyString(),
+                    ConfigDef.Importance.HIGH, "The database password where the encryption target column data is stored.")
+            .define(DB_INSNAME_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, new ConfigDef.NonEmptyString(),
                     ConfigDef.Importance.HIGH, "The database password where the encryption target column data is stored.")
             .define(COLUMN_RRNO_CONFIG, ConfigDef.Type.STRING, COLUMN_RRNO_DEFAULT, new ConfigDef.NonEmptyString(),
                     ConfigDef.Importance.HIGH, "The database password where the encryption target column data is stored.")
@@ -151,12 +154,13 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
     }
 
     //    암호화 대상 정보를 획득을 위한 DB 정보
-    private  static String dbDriver;
-    private  static String dbIp;
-    private  static String dbPort;
-    private  static String dbSchema;
-    private  static String dbUser;
-    private  static String dbPwd;
+    private static String dbDriver;
+    private static String dbIp;
+    private static String dbPort;
+    private static String dbSchema;
+    private static String dbUser;
+    private static String dbPwd;
+    private static String dbInsName;
 
     //    컬럼 추가 대상 정보
     private static String columnRrno;
@@ -164,14 +168,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
 
     //    암호화 대상 컬럼 정보
     private Map<String, String[]> infoHmap = new HashMap<>();
-    private String col_nm;
-    private String dmn_pnm;
-    private String encrp_cd;
-    private String encrp_key;
 
-    private String ifRrno1;
-    private String ifRrno2;
-    private String ifAddr1;
 
     private Cache<Schema, Schema> schemaUpdateCache;
 
@@ -184,6 +181,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
         dbSchema = config.getString(DB_SCHEMA_CONFIG);
         dbUser = config.getString(DB_USER_CONFIG);
         dbPwd = config.getString(DB_PWD_CONFIG);
+        dbInsName = config.getString(DB_INSNAME_CONFIG);
 
         logger.info(":TIMEGATE: configure logger.info");
         logger.log(SEVERE,":TIMEGATE: configure logger.log.level severe");
@@ -193,7 +191,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
         columnAddr = config.getString(COLUMN_ADDR_CONFIG);
         System.out.println(":TIMEGATE: configure method TEST :");
         System.out.println(":TIMEGATE: DB접속정보 :"+dbIp+":"+dbPort+":"+dbSchema+":"+dbUser+":"+dbPwd);
-        infoHmap = TargetColumnInfo.getColumnInfo(dbIp, dbPort, dbSchema, dbUser, dbPwd, dbDriver);
+        infoHmap = TargetColumnInfo.getColumnInfo(dbIp, dbPort, dbSchema, dbUser, dbPwd, dbDriver, dbInsName);
         System.out.println(":TIMEGATE: configure method infoHmap :"+infoHmap);
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
 
