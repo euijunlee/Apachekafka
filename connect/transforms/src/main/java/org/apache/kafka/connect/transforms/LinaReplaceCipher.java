@@ -189,7 +189,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         columnRrno = config.getString(COLUMN_RRNO_CONFIG);
         columnAddr = config.getString(COLUMN_ADDR_CONFIG);
         System.out.println(":LINASTDOUT: configure method TEST :");
-        System.out.println(":LINASTDOUT: DB접속정보 :"+dbIp+":"+dbPort+":"+dbSchema+":"+dbUser+":"+dbPwd+":"+dbInsName);
+        System.out.println(":LINASTDOUT: DB Connet Description Info :"+dbIp+":"+dbPort+":"+dbSchema+":"+dbUser+":"+dbPwd+":"+dbInsName);
         infoHmap = TargetColumnInfo.getColumnInfo(dbIp, dbPort, dbSchema, dbUser, dbPwd, dbDriver, dbInsName);
         System.out.println(":LINASTDOUT: configure method infoHmap :"+infoHmap);
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
@@ -202,7 +202,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         if (operatingSchema(record) == null) {
             return applySchemaless(record);
         } else {
-            System.out.println(":LINASTDOUT: apply method 스키마 있음 record :"+record);
+            System.out.println(":LINASTDOUT: apply method with Schema record :"+record);
             return applyWithSchema(record);
         }
     }
