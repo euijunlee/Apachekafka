@@ -359,7 +359,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
 
 
     /**
-     * 데이터 Value를 암호화 변환 하는 Method임
+     * 데이터 Value를 암호화 변환 하는 Method임을 확인
      * @param value
      * @return 암호화 된 Value를 리턴
      */
