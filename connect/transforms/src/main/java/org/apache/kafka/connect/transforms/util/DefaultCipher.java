@@ -37,10 +37,10 @@ public class DefaultCipher {
 //        createIVSpec(ivStr, repeat);
 //    }
 
-    public static String transformType(Object value, String cipherType, String encrpKey) throws Exception {
+    public static Object transformType(Object value, String transType, String encrpKey) throws Exception {
 //        현재는 데이터 마다 spec 및 key 생성
 
-        switch (cipherType) {
+        switch (transType) {
             case "1":
                 System.out.println(":LINASTDOUT: transformType sha encrpKey : " + encrpKey);
                 return getSHA256Value(value, encrpKey);
@@ -54,6 +54,20 @@ public class DefaultCipher {
 //                System.out.println(":LINASTDOUT: transformType createKeySpec : " + secretKeySpec);
 //                System.out.println(":LINASTDOUT: transformType createIVSpec : " + ivSpec);
                 return getEncryptValue(value.toString());
+//                break;
+            case "3":
+                System.out.println(":LINASTDOUT: transformType round numbers : " + encrpKey);
+                return DataUtils.round_nums(value, encrpKey);
+//                break;
+            case "4":
+                System.out.println(":LINASTDOUT: transformType delete values : " + encrpKey);
+//                return DataUtils.delete_data(value);
+                return null;
+//                break;
+            case "5":
+                System.out.println(":LINASTDOUT: transformType change values : " + encrpKey);
+                return encrpKey;
+//                return DataUtils.change_data(value, encrpKey);
 //                break;
             default:
                 return getSHA256Value(value, encrpKey);

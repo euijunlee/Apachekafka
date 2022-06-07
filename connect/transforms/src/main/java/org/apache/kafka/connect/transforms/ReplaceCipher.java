@@ -264,7 +264,7 @@ public abstract class ReplaceCipher<R extends ConnectRecord<R>> implements Trans
                 System.out.println(":TIMEGATE: cipherWithCustomReplacement encryptedValue : " + encryptedValue);
             }else if("JUSO".equals(type)){
 //                String[] juso = new String[2];
-                String[] juso = JusoRegexUtil.getAddress(value.toString());
+                String[] juso = DataUtils.getAddress(value.toString());
                 if ("NOMATCH".equals(juso[0])){
                     encryptedValue = Pbkdf2Cipher.transformType(juso[1], cipherType, saltLen, keyStretchingRepeat);
                 }else{

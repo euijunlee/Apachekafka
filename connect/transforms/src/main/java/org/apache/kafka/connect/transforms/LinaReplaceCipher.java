@@ -32,9 +32,6 @@ import java.util.Date;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-import static java.util.logging.Level.INFO;
-import static java.util.logging.Level.SEVERE;
-
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
@@ -74,9 +71,15 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
     //    oriField(주민등록 번호 필드) : 9510231XXXXXXXXXXXXX(34자리) -> oriField [전체 암호화], addField1(생년월 4자리) [9510], addfield2(성별 1자리) [1]
     private static final String COLUMN_RRNO_CONFIG = "column.rrno";
     private static final String COLUMN_RRNO_DEFAULT = "RRNO";
+
+//    private static final String COLUMN_RRNO1_INSERT_FIELD_CONFIG = "column.rrno1.insert.field";
+//    private static final String COLUMN_RRNO2_INSERT_FIELD_CONFIG = "column.rrno2.insert.field";
+
     //    oriField(주소 필드) : 서울시 은평구 응암동 132번지 -> oriField [전체 암호화], addField1 [서울시 은평구 응암동]
     private static final String COLUMN_ADDR_CONFIG = "column.addr";
     private static final String COLUMN_ADDR_DEFAULT = "ADDR";
+
+//    private static final String COLUMN_ADDR1_INSERT_FIELD_CONFIG = "column.addr1.insert.field";
 
 
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
@@ -230,6 +233,10 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 
 
         Schema updatedSchema = schemaUpdateCache.get(value.schema());
+        if (updatedSchema == null) {
+            updatedSchema = copyUpdatedSchema(value.schema());
+            schemaUpdateCache.put(value.schema(), updatedSchema);
+        }
 
         for (Field field : value.schema().fields()) {
             if(infoHmap.containsKey(field.name())){
@@ -258,34 +265,45 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
 
         }
 
-
+//      추가 데이터 insert시 updatedSchema가 null 오류 발생
         final Struct updatedValue = new Struct(updatedSchema);
         System.out.println("====================:LINASTDOUT: Schema Creation Completed : updatedValue.schema().fields() :"+updatedValue.schema().fields());
 
         for (Field field : value.schema().fields()) {
             final Object origFieldValue = value.get(field);
+            System.out.println("+++:LINASTDOUT: All Values : "+field.name()+":"+origFieldValue);
 //            updatedValue.put(field.name(), origFieldValue == null ? "" : origFieldValue);
-            updatedValue.put(field.name(), origFieldValue);
-            System.out.println("+++:LINASTDOUT: Values : "+field.name()+":"+origFieldValue);
-            if(infoHmap.containsKey(field.name())){
-                updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
+
+            if (origFieldValue != null && infoHmap.containsKey(field.name())){
+                System.out.println("+++:LINASTDOUT: Not Null & Encription Values : "+field.name()+":"+origFieldValue);
+                //updatedValue.put(field, origFieldValue == null || "".equals(origFieldValue)  ? origFieldValue : ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
 
                 if(Arrays.asList(infoHmap.get(field.name())).contains(columnRrno) && updatedSchema != null){
-                    updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,4));
-                    updatedValue.put(field.name()+"_2", origFieldValue.toString().substring(6,7));
-
-                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr) && updatedSchema != null){
-                    String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
-                    if ("NOMATCH".equals(juso[0])){
-                        updatedValue.put(field.name()+"_1", origFieldValue.toString().substring(0,13));
+                    System.out.println("+++:LINASTDOUT: RRNO Values : "+field.name()+":"+origFieldValue);
+                    if(origFieldValue.toString().length() >=7){
+                        updatedValue.put(field.name()+"_YYYYMM", origFieldValue.toString().substring(0,4));
+                        updatedValue.put(field.name()+"_GNDR_CD", origFieldValue.toString().substring(6,7));
+                        updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
                     }else{
-                        updatedValue.put(field.name()+"_1", juso[0]);
+                        updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
                     }
 
+                }else if(Arrays.asList(infoHmap.get(field.name())).contains(columnAddr) && updatedSchema != null){
+                    System.out.println("+++:LINASTDOUT: ADDR Values : "+field.name()+":"+origFieldValue);
+                    String[] juso = DataUtils.getAddress(origFieldValue.toString());
+                    if ("NOMATCH".equals(juso[0])){
+//                        updatedValue.put(field.name()+"_SUB", origFieldValue);
+                        updatedValue.put(field.name()+"_SUB", ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
+                    }else{
+                        updatedValue.put(field.name()+"_SUB", juso[0]);
+                    }
+                    updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
+                }else{
+                    updatedValue.put(field, ciphered(origFieldValue, infoHmap.get(field.name())[0], infoHmap.get(field.name())[1], infoHmap.get(field.name())[2]));
                 }
-
+            }else{
+                updatedValue.put(field.name(), origFieldValue);
             }
-
         }
         return newRecord(record, updatedSchema, updatedValue);
 
@@ -298,7 +316,8 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         if (value == null) {
             return null;
         }
-        return cipherWithCustomTransforms(value, dmn_pnm, encrp_cd, encrp_key);
+        return cipherWithCustomTransforms(value,  encrp_cd, encrp_key);
+//        return cipherWithCustomTransforms(value, dmn_pnm, encrp_cd, encrp_key);
 
     }
 
@@ -309,7 +328,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
      * @param value
      * @return 암호화 된 Value를 리턴
      */
-    private static Object cipherWithCustomTransforms(Object value, String dmn_pnm, String encrp_cd, String encrp_key) {
+    private static Object cipherWithCustomTransforms(Object value, String encrp_cd, String encrp_key) {
         System.out.println(":LINASTDOUT: cipherWithCustomReplacement value : " + value);
         Function<String, ?> replacementMapper = REPLACEMENT_MAPPING_FUNC.get(value.getClass());
         if (replacementMapper == null) {
@@ -317,10 +336,11 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         }
         try {
 //            암호화 타입 및 설정에 따른 암호화
-            String encryptedValue = DefaultCipher.transformType(value, encrp_cd, encrp_key);
-            System.out.println(":LINASTDOUT: cipherWithCustomTransforms cipherType : " + encrp_cd);
+//            String transferedValue = (DefaultCipher.transformType(value, encrp_cd, encrp_key)).toString();
+            String transferedValue = DefaultCipher.transformType(value, encrp_cd, encrp_key) == null ? null : DefaultCipher.transformType(value, encrp_cd, encrp_key).toString();
+            System.out.println(":LINASTDOUT: cipherWithCustomTransforms transType : " + encrp_cd);
             System.out.println(":LINASTDOUT: cipherWithCustomTransforms encrp_key : " + encrp_key);
-            return replacementMapper.apply(encryptedValue);
+            return replacementMapper.apply(transferedValue);
 //            return replacementMapper.apply(MessageDigestTransform.getTransformMessage(value));
         } catch (NumberFormatException ex) {
             throw new DataException("Unable to convert SHA256 to number", ex);
@@ -337,11 +357,11 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
             System.out.println(":LINASTDOUT: AS-IS field.name(), field.schema() :"+field.name()+"::"+field.schema());
         }
         if(columnRrno.equals(type)){
-            builder.field(insertField+"_1", Schema.STRING_SCHEMA);
-            builder.field(insertField+"_2", Schema.STRING_SCHEMA);
+            builder.field(insertField+"_YYYYMM", Schema.OPTIONAL_STRING_SCHEMA);
+            builder.field(insertField+"_GNDR_CD", Schema.OPTIONAL_STRING_SCHEMA);
             System.out.println("************:LINASTDOUT: fieldUpdatedSchema rrno :");
         }else if(columnAddr.equals(type)){
-            builder.field(insertField+"_1", Schema.STRING_SCHEMA);
+            builder.field(insertField+"_SUB", Schema.OPTIONAL_STRING_SCHEMA);
             System.out.println("************:LINASTDOUT: fieldUpdatedSchema addr :");
         }
 
@@ -352,6 +372,15 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
         return builder.build();
     }
 
+    private Schema copyUpdatedSchema(Schema schema) {
+        final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+
+        for (Field field : schema.fields()) {
+            builder.field(field.name(), field.schema());
+        }
+
+        return builder.build();
+    }
 
     @Override
     public ConfigDef config() {
@@ -432,6 +461,7 @@ public abstract class LinaReplaceCipher<R extends ConnectRecord<R>> implements T
             System.out.println(":LINASTDOUT: newRecord ===Value2=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
                     record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",record.key():"+record.key()+",updatedSchema:"+
                     updatedSchema+",updatedValue:"+updatedValue);
+//            return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), updatedSchema, updatedValue, record.timestamp());
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), updatedSchema, updatedValue, record.timestamp());
         }
     }
