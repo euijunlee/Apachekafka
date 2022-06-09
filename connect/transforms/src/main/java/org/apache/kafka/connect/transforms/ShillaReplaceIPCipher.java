@@ -38,7 +38,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 
 /**
- * 호텔신라 AES128 암호화
+ * 호텔신라 AES128 암호화 모듈
  * @param <R>
  */
 public abstract class ShillaReplaceIPCipher<R extends ConnectRecord<R>> implements Transformation<R> {
