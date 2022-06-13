@@ -14,6 +14,7 @@ public class ShillaCipherAES {
 
     private static final String TRANSFORM = "AES/ECB/PKCS5Padding";
 
+
     public static String encrypt(String plainText) throws Exception{
         if(null != plainText){
             KeyGenerator kgen = KeyGenerator.getInstance("AES");

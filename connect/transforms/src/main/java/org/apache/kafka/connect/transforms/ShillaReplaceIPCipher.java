@@ -114,10 +114,10 @@ public abstract class ShillaReplaceIPCipher<R extends ConnectRecord<R>> implemen
 
     //    스키마가 없는 데이터의 변환
     private R applySchemaless(R record) {
-        System.out.println(":TIMEGATE: applySchemaless class :");
+//        System.out.println(":TIMEGATE: applySchemaless class :");
 //        final Map<String, Object> value = requireMap(operatingValue(record), PURPOSE);
 //        final HashMap<String, Object> updatedValue = new HashMap<>(value);
-        System.out.println(":TIMEGATE: applySchemaless class : operatingValue(record) : " + operatingValue(record));
+//        System.out.println(":TIMEGATE: applySchemaless class : operatingValue(record) : " + operatingValue(record));
         Object updatedValue = ciphered(operatingValue(record));
 //        for (String field : columnfield) {
 //            updatedValue.put(field, ciphered(value.get(field)));
@@ -160,8 +160,8 @@ public abstract class ShillaReplaceIPCipher<R extends ConnectRecord<R>> implemen
 
     private static Object cipherWithNullValue(Object value) {
         Object cipheredValue = PRIMITIVE_VALUE_MAPPING.get(value.getClass());
-        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
-        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
+//        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
+//        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
         if (cipheredValue == null) {
             if (value instanceof List)
                 cipheredValue = Collections.emptyList();
@@ -185,12 +185,16 @@ public abstract class ShillaReplaceIPCipher<R extends ConnectRecord<R>> implemen
             throw new DataException("Cannot mask value of type " + value.getClass() + " with custom replacement.");
         }
         try {
-            String IP = ShillaUtil.getIp(value.toString());
-            System.out.println("TIMEGATE:IP:"+IP);
+//            전체 IPs 암호화
+//            String IP[] = ShillaUtil.getIPs(value.toString());
+//            String replacedIP = ShillaUtil.ipsCiphered(value.toString(), IP);
+//            "IP: " 패턴의 ip만 암호화
+            String IP = ShillaUtil.getIP(value.toString());
+//            System.out.println("TIMEGATE:IP:"+IP);
             String encryptedIP = ShillaCipherAES.encrypt(IP);
-            System.out.println("TIMEGATE:encryptedIP:"+encryptedIP);
+//            System.out.println("TIMEGATE:encryptedIP:"+encryptedIP);
             String replacedIP = ShillaUtil.ipCiphered(value.toString(), IP, encryptedIP);
-            System.out.println("TIMEGATE:replacedIP:"+replacedIP);
+//            System.out.println("TIMEGATE:replacedIP:"+replacedIP);
             return replacementMapper.apply(replacedIP);
         } catch (NumberFormatException ex) {
             throw new DataException("Unable to convert Data", ex);

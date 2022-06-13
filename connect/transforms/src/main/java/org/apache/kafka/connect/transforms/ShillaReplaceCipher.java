@@ -99,9 +99,9 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
         columnfield = new HashSet<>(config.getList(COLUMNFIELD_CONFIG));
 
         for (String field : columnfield) {
-            System.out.println(":TIMEGATE: configure method columnfiled size :"+columnfield.size());
-            System.out.println(":TIMEGATE: configure method columnfiled :"+field);
-            System.out.println(":TIMEGATE: configure method =============================== :");
+//            System.out.println(":TIMEGATE: configure method columnfiled size :"+columnfield.size());
+//            System.out.println(":TIMEGATE: configure method columnfiled :"+field);
+//            System.out.println(":TIMEGATE: configure method =============================== :");
         }
 
     }
@@ -109,10 +109,10 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
     @Override
     public R apply(R record) {
         if (operatingSchema(record) == null) {
-            System.out.println(":TIMEGATE: applySchemaless");
+//            System.out.println(":TIMEGATE: applySchemaless");
             return applySchemaless(record);
         } else {
-            System.out.println(":TIMEGATE: applyWithSchema");
+//            System.out.println(":TIMEGATE: applyWithSchema");
             return applyWithSchema(record);
         }
     }
@@ -132,28 +132,28 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
     private R applyWithSchema(R record) {
 //        System.out.println(":TIMEGATE: applyWithSchema class :");
         final Struct value = requireStruct(operatingValue(record), PURPOSE);
-        System.out.println(":TIMEGATE: applyWithSchema class : Struct Type value :"+value);
-        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
+//        System.out.println(":TIMEGATE: applyWithSchema class : Struct Type value :"+value);
+//        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
         final Struct updatedValue = new Struct(value.schema());
 
 //        String
 
         for (Field field : value.schema().fields()) {
-            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
+//            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
             final Object origFieldValue = value.get(field);
-            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
-            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
-            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
+//            System.out.println(":TIMEGATE: applyWithSchema class : value.get(field) -> origiFieldValue :"+origFieldValue);
+//            System.out.println(":TIMEGATE: applyWithSchema class : record.topic() :"+record.topic());
+//            System.out.println(":TIMEGATE: applyWithSchema class : field.name() :"+field.name());
 //            field.name()에 대한 값을 columnfield와 비교 하여 암호화 처리
 //            columnfield의 값이 table.column 즉 topic.column
 
-            System.out.println(":TIMEGATE: applyWithSchema class : columnfield :"+columnfield);
+//            System.out.println(":TIMEGATE: applyWithSchema class : columnfield :"+columnfield);
             if(columnfield.contains(record.topic()+"."+field.name())){
 
-                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
+//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, ciphered(origFieldValue));
             }else{
-                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
+//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, origFieldValue);
             }
 //            updatedValue.put(field, columnfield.contains(record.topic()+"."+field.name()) ? ciphered(origFieldValue) : origFieldValue);
@@ -175,8 +175,8 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 
     private static Object cipherWithNullValue(Object value) {
         Object cipheredValue = PRIMITIVE_VALUE_MAPPING.get(value.getClass());
-        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
-        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
+//        System.out.println(":TIMEGATE: cipherWithNullValue :cipheredValue:"+cipheredValue);
+//        System.out.println(":TIMEGATE: cipherWithNullValue :value.getClass():"+value.getClass());
         if (cipheredValue == null) {
             if (value instanceof List)
                 cipheredValue = Collections.emptyList();
@@ -242,9 +242,9 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 
         @Override
         protected R newRecord(R record, Object updatedValue) {
-            System.out.println(":TIMEGATE: newRecord ===Key=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
-                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",updatedValue:"+updatedValue+",record.valueSchema()"+
-                    record.valueSchema()+",record.value():"+record.value());
+//            System.out.println(":TIMEGATE: newRecord ===Key=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
+//                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",updatedValue:"+updatedValue+",record.valueSchema()"+
+//                    record.valueSchema()+",record.value():"+record.value());
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), updatedValue, record.valueSchema(), record.value(), record.timestamp());
         }
 
@@ -264,9 +264,9 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 
         @Override
         protected R newRecord(R record, Object updatedValue) {
-            System.out.println(":TIMEGATE: newRecord ===Value=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
-                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",record.key():"+record.key()+",record.valueSchema()"+
-                    record.valueSchema()+",updatedValue:"+updatedValue);
+//            System.out.println(":TIMEGATE: newRecord ===Value=== class : record.topic() :"+record.topic()+",record.kafkaPartition():"+
+//                    record.kafkaPartition()+",record.keySchema():"+record.keySchema()+",record.key():"+record.key()+",record.valueSchema()"+
+//                    record.valueSchema()+",updatedValue:"+updatedValue);
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), updatedValue, record.timestamp());
         }
 
