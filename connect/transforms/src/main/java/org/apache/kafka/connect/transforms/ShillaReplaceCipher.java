@@ -65,6 +65,12 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
     private static final Map<Class<?>, Object> PRIMITIVE_VALUE_MAPPING = new HashMap<>();
 
 
+    private static final String shilladfsKR = "_shilladfsKR";
+    private static final String shilladfsCN = "_shilladfsCN";
+    private static final String shilladfsJP = "_shilladfsJP";
+    private static final String shilladfsEN = "_shilladfsEN";
+
+
     static {
         PRIMITIVE_VALUE_MAPPING.put(Boolean.class, Boolean.FALSE);
         PRIMITIVE_VALUE_MAPPING.put(Byte.class, (byte) 0);
@@ -136,7 +142,32 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 //        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
         final Struct updatedValue = new Struct(value.schema());
 
-//        String
+//        아니면 루프를 첫번째 돌려서 값을 빼내고 그다음에 돌려서 타겟을 찾아 암호화 가능
+
+        String onlineCode = "";
+        for (Field field : value.schema().fields()) {
+            final Object origFieldValue = value.get(field);
+            if("STOR_CD".equals(field.name())) {
+                switch (origFieldValue.toString()) {
+                    case "51":
+                        onlineCode = shilladfsKR;
+                        break;
+                    case "52":
+                        onlineCode = shilladfsCN;
+                        break;
+                    case "54":
+                        onlineCode = shilladfsJP;
+                        break;
+                    case "55":
+                        onlineCode = shilladfsEN;
+                        break;
+                    default:
+                        onlineCode = "Not Match Code";
+                        break;
+                }
+            }
+        }
+
 
         for (Field field : value.schema().fields()) {
 //            System.out.println(":TIMEGATE: applyWithSchema class : value.schema().fields() :"+field);
@@ -147,11 +178,14 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 //            field.name()에 대한 값을 columnfield와 비교 하여 암호화 처리
 //            columnfield의 값이 table.column 즉 topic.column
 
+
 //            System.out.println(":TIMEGATE: applyWithSchema class : columnfield :"+columnfield);
             if(columnfield.contains(record.topic()+"."+field.name())){
+//                System.out.println(":SHILLA: applyWithSchema class : record.topic()+field.name() 암호화 대상 필드:"+record.topic()+"."+field.name());
+//                System.out.println(":SHILLA: applyWithSchema class : 암호화 대상 값 origFieldValue :"+origFieldValue);
+//                System.out.println(":SHILLA: applyWithSchema class : 암호화 코드 onlineCode :"+onlineCode);
 
-//                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() IF TRUE:"+record.topic()+"."+field.name());
-                updatedValue.put(field, ciphered(origFieldValue));
+                updatedValue.put(field, ciphered(origFieldValue+onlineCode));
             }else{
 //                System.out.println(":TIMEGATE: applyWithSchema class : record.topic()+field.name() ELSE FALSE:"+record.topic()+"."+field.name());
                 updatedValue.put(field, origFieldValue);
