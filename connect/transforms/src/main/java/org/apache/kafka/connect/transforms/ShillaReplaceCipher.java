@@ -142,13 +142,18 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 //        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
         final Struct updatedValue = new Struct(value.schema());
 
-//        아니면 루프를 첫번째 돌려서 값을 빼내고 그다음에 돌려서 타겟을 찾아 암호화 가능
+//      코드 값을 찾는 루프 추가
 
         String onlineCode = "";
         for (Field field : value.schema().fields()) {
             final Object origFieldValue = value.get(field);
             if("STOR_CD".equals(field.name())) {
-                switch (origFieldValue.toString()) {
+                String strCd = origFieldValue.toString();
+                if (strCd == null || strCd.equals("")){
+                    strCd = "";
+                }
+
+                switch (strCd) {
                     case "51":
                         onlineCode = shilladfsKR;
                         break;
@@ -162,7 +167,7 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
                         onlineCode = shilladfsEN;
                         break;
                     default:
-                        onlineCode = "Not Match Code";
+                        onlineCode = "";
                         break;
                 }
             }
