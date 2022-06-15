@@ -148,7 +148,12 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
         for (Field field : value.schema().fields()) {
             final Object origFieldValue = value.get(field);
             if("STOR_CD".equals(field.name())) {
-                switch (origFieldValue.toString()) {
+                String strCd = origFieldValue.toString();
+                if (strCd == null || strCd.equals("")){
+                    strCd = "";
+                }
+
+                switch (strCd) {
                     case "51":
                         onlineCode = shilladfsKR;
                         break;
@@ -162,7 +167,7 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
                         onlineCode = shilladfsEN;
                         break;
                     default:
-                        onlineCode = "Not Match Code";
+                        onlineCode = "";
                         break;
                 }
             }
