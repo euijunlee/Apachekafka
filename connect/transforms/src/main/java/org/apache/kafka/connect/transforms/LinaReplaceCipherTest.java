@@ -318,7 +318,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
                         System.out.println(":TIMEGATE: applyWithSchema class : updatedSchemaAddr 스키마 업데이트 :"+value.schema()+"::"+updatedSchemaAddr);
                     }
 
-                    String[] juso = JusoRegexUtil.getAddress(origFieldValue.toString());
+                    String[] juso = DataUtils.getAddress(origFieldValue.toString());
                     if ("NOMATCH".equals(juso[0])){
                         updatedValueAddr.put(field.name()+"1", origFieldValue.toString().substring(0,13));
                     }else{
@@ -359,7 +359,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
 
 
     /**
-     * 데이터 Value를 암호화 변환 하는 Method
+     * 데이터 Value를 암호화 변환 하는 Method임을 확인 해야함
      * @param value
      * @return 암호화 된 Value를 리턴
      */
@@ -371,7 +371,7 @@ public abstract class LinaReplaceCipherTest<R extends ConnectRecord<R>> implemen
         }
         try {
 //            암호화 타입 및 설정에 따른 암호화
-            String encryptedValue = DefaultCipher.transformType(value, encrp_cd, encrp_key);
+            String encryptedValue = (DefaultCipher.transformType(value, encrp_cd, encrp_key)).toString();
             System.out.println(":TIMEGATE: cipherWithCustomTransforms cipherType : " + encrp_cd);
             System.out.println(":TIMEGATE: cipherWithCustomTransforms encrp_key : " + encrp_key);
             return replacementMapper.apply(encryptedValue);
