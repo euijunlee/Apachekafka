@@ -142,7 +142,7 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 //        System.out.println(":TIMEGATE: applyWithSchema class : value.schema :"+value.schema());
         final Struct updatedValue = new Struct(value.schema());
 
-//        아니면 루프를 첫번째 돌려서 값을 빼내고 그다음에 돌려서 타겟을 찾아 암호화 가능
+//      코드 값을 찾는 루프
 
         String onlineCode = "";
         for (Field field : value.schema().fields()) {
