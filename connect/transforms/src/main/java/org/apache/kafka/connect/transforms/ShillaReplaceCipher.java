@@ -148,9 +148,11 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
         for (Field field : value.schema().fields()) {
             final Object origFieldValue = value.get(field);
             if("STOR_CD".equals(field.name())) {
-                String strCd = origFieldValue.toString();
-                if (strCd == null || strCd.equals("")){
+                String strCd = "";
+                if (origFieldValue == null || origFieldValue.equals("")){
                     strCd = "";
+                }else{
+                    strCd = origFieldValue.toString();
                 }
 
                 switch (strCd) {
@@ -186,9 +188,8 @@ public abstract class ShillaReplaceCipher<R extends ConnectRecord<R>> implements
 
 //            System.out.println(":TIMEGATE: applyWithSchema class : columnfield :"+columnfield);
             if(columnfield.contains(record.topic()+"."+field.name())){
-//                System.out.println(":SHILLA: applyWithSchema class : record.topic()+field.name() 암호화 대상 필드:"+record.topic()+"."+field.name());
-//                System.out.println(":SHILLA: applyWithSchema class : 암호화 대상 값 origFieldValue :"+origFieldValue);
-//                System.out.println(":SHILLA: applyWithSchema class : 암호화 코드 onlineCode :"+onlineCode);
+//                System.out.pr
+//                ss : 암호화 코드 onlineCode :"+onlineCode);
 
                 updatedValue.put(field, ciphered(origFieldValue+onlineCode));
             }else{
