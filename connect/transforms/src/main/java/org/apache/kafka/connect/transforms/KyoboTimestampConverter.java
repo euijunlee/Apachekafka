@@ -464,6 +464,8 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         if (sourceTranslator == null) {
             throw new ConnectException("Unsupported timestamp type: " + timestampFormat);
         }
+
+
         String unixTime = timestamp.toString();
         int unixTimeLen = unixTime.length();
         if(unixTimeLen == 16){
@@ -471,6 +473,31 @@ public abstract class KyoboTimestampConverter<R extends ConnectRecord<R>> implem
         }
 
         Date rawTimestamp = sourceTranslator.toRaw(config, Long.parseLong(unixTime));
+/**
+ * 아래 교보 적용 중
+ */
+//        String unixTime = timestamp.toString();
+//
+//        long epochTime = Long.parseLong(unixTime);
+//
+//        if ( epochTime >= 0 ) {
+//
+//            if (unixTime.length() > 3 ) {
+//                epochTime = epochTime / 1000;
+//            }else {
+//                epochTime = 0;
+//            }
+//
+//        }else {
+//            if (unixTime.length() > 4 ) {
+//                epochTime = epochTime / 1000;
+//            }else {
+//                epochTime = 0;
+//            }
+//        }
+//
+//
+//        Date rawTimestamp = sourceTranslator.toRaw(config, epochTime);
 
         TimestampTranslator targetTranslator = TRANSLATORS.get(type);
         if (targetTranslator == null) {
